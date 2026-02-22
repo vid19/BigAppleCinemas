@@ -19,6 +19,7 @@ import {
   loginUser,
   registerUser,
   setAccessToken,
+  submitRecommendationFeedback,
   scanTicket
 } from "./catalog";
 
@@ -219,6 +220,27 @@ describe("catalog api client", () => {
     expect(fetchMock.mock.calls[2][0]).toContain("limit=5");
     expect(fetchMock.mock.calls[3][0]).toContain("/api/me/recommendations");
     expect(fetchMock.mock.calls[3][0]).toContain("limit=4");
+  });
+
+  it("submits recommendation feedback payload", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ movie_id: 4, event_type: "SAVE_FOR_LATER", active: true })
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await submitRecommendationFeedback({
+      movie_id: 4,
+      event_type: "SAVE_FOR_LATER",
+      active: true
+    });
+
+    expect(response.movie_id).toBe(4);
+    const [requestUrl, requestOptions] = fetchMock.mock.calls[0];
+    expect(requestUrl).toContain("/api/me/recommendations/feedback");
+    expect(requestOptions.method).toBe("POST");
+    expect(requestOptions.body).toContain('"event_type":"SAVE_FOR_LATER"');
   });
 
   it("sends staff header for ticket scan", async () => {

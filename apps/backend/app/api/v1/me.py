@@ -2,17 +2,18 @@ from collections import Counter, defaultdict
 from datetime import UTC, date, datetime
 from math import log1p
 
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy import func, select
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user_id
-from app.core.cache import get_cache_json, set_cache_json
+from app.core.cache import delete_cache_prefix, get_cache_json, set_cache_json
 from app.core.config import settings
+from app.core.metrics import increment_metric
 from app.db.session import get_db_session
 from app.models.movie import Movie
 from app.models.order import Order, Ticket
-from app.models.recommendation import MovieSimilarity
+from app.models.recommendation import MovieSimilarity, UserMovieEvent
 from app.models.showtime import Auditorium, Seat, Showtime, Theater
 from app.schemas.portal import (
     MovieRecommendationItem,
@@ -21,9 +22,13 @@ from app.schemas.portal import (
     MyOrderListResponse,
     MyTicketItem,
     MyTicketListResponse,
+    RecommendationFeedbackRead,
+    RecommendationFeedbackWrite,
 )
 
 router = APIRouter()
+NOT_INTERESTED = "NOT_INTERESTED"
+SAVE_FOR_LATER = "SAVE_FOR_LATER"
 
 
 def _extract_genres(metadata_json: dict | None) -> list[str]:
@@ -75,7 +80,11 @@ def _recommendation_reason(
     genres: list[str],
     genre_weights: dict[str, float],
     tickets_sold: int,
+    is_saved_for_later: bool,
 ) -> str:
+    if is_saved_for_later:
+        return "Saved for later"
+
     if source_movie_id is not None and source_movie_id in watched_titles:
         return f"Because you watched {watched_titles[source_movie_id]}"
 
@@ -155,6 +164,69 @@ async def list_my_orders(
     return MyOrderListResponse(items=items, total=len(items))
 
 
+@router.post(
+    "/recommendations/feedback",
+    response_model=RecommendationFeedbackRead,
+    status_code=status.HTTP_200_OK,
+)
+async def submit_recommendation_feedback(
+    payload: RecommendationFeedbackWrite,
+    session: AsyncSession = Depends(get_db_session),
+    user_id: int = Depends(get_current_user_id),
+) -> RecommendationFeedbackRead:
+    now = datetime.now(tz=UTC)
+    async with session.begin():
+        movie_exists = (
+            await session.execute(select(Movie.id).where(Movie.id == payload.movie_id))
+        ).scalar_one_or_none()
+        if movie_exists is None:
+            raise HTTPException(status_code=404, detail="Movie not found")
+
+        await session.execute(
+            delete(UserMovieEvent).where(
+                UserMovieEvent.user_id == user_id,
+                UserMovieEvent.movie_id == payload.movie_id,
+                UserMovieEvent.event_type != payload.event_type,
+                UserMovieEvent.event_type.in_([NOT_INTERESTED, SAVE_FOR_LATER]),
+            )
+        )
+        existing_event = (
+            await session.execute(
+                select(UserMovieEvent)
+                .where(
+                    UserMovieEvent.user_id == user_id,
+                    UserMovieEvent.movie_id == payload.movie_id,
+                    UserMovieEvent.event_type == payload.event_type,
+                )
+                .with_for_update()
+            )
+        ).scalar_one_or_none()
+
+        recorded_at: datetime | None = None
+        if payload.active:
+            if existing_event is None:
+                existing_event = UserMovieEvent(
+                    user_id=user_id,
+                    movie_id=payload.movie_id,
+                    event_type=payload.event_type,
+                )
+                session.add(existing_event)
+                await session.flush()
+            recorded_at = existing_event.created_at if existing_event.created_at else now
+        else:
+            if existing_event is not None:
+                await session.delete(existing_event)
+
+    await delete_cache_prefix(f"recommendations:{user_id}:")
+    increment_metric("recommendation_feedback_total")
+    return RecommendationFeedbackRead(
+        movie_id=payload.movie_id,
+        event_type=payload.event_type,
+        active=payload.active,
+        recorded_at=recorded_at,
+    )
+
+
 @router.get("/recommendations", response_model=MovieRecommendationResponse)
 async def list_my_recommendations(
     limit: int = Query(default=8, ge=1, le=20),
@@ -168,6 +240,24 @@ async def list_my_recommendations(
         return MovieRecommendationResponse.model_validate(cached_payload)
 
     now = datetime.now(tz=UTC)
+    feedback_rows = (
+        await session.execute(
+            select(UserMovieEvent.movie_id, UserMovieEvent.event_type).where(
+                UserMovieEvent.user_id == user_id,
+                UserMovieEvent.event_type.in_([NOT_INTERESTED, SAVE_FOR_LATER]),
+            )
+        )
+    ).all()
+    not_interested_movie_ids = {
+        int(movie_id)
+        for movie_id, event_type in feedback_rows
+        if event_type == NOT_INTERESTED
+    }
+    saved_for_later_movie_ids = {
+        int(movie_id)
+        for movie_id, event_type in feedback_rows
+        if event_type == SAVE_FOR_LATER
+    }
 
     watch_history_stmt = (
         select(
@@ -274,6 +364,8 @@ async def list_my_recommendations(
     )
     if watched_movie_ids:
         recommendations_stmt = recommendations_stmt.where(~Movie.id.in_(watched_movie_ids))
+    if not_interested_movie_ids:
+        recommendations_stmt = recommendations_stmt.where(~Movie.id.in_(not_interested_movie_ids))
 
     recommendation_rows = (await session.execute(recommendations_stmt)).mappings().all()
     max_similarity = max(similarity_score_by_movie.values(), default=0.0)
@@ -299,11 +391,17 @@ async def list_my_recommendations(
         )
         rating_score = rating_weights.get(str(row["rating"] or "").strip(), 0.0)
         rating_bonus = min(rating_score / 4.0, 0.10) if rating_score > 0 else 0.0
+        save_for_later_bonus = (
+            settings.recommendation_save_for_later_boost
+            if movie_id in saved_for_later_movie_ids
+            else 0.0
+        )
         base_score = (
             (similarity_score * personalized_weight)
             + (popularity_score * popularity_weight)
             + (freshness_score * freshness_weight)
             + rating_bonus
+            + save_for_later_bonus
         )
         source_data = top_source_by_movie.get(movie_id)
         source_movie_id = source_data[1] if source_data else None
@@ -367,6 +465,7 @@ async def list_my_recommendations(
                 genres=row["genres"],
                 genre_weights=genre_weights,
                 tickets_sold=row["tickets_sold"],
+                is_saved_for_later=row["movie_id"] in saved_for_later_movie_ids,
             ),
             score=row["score"],
         )

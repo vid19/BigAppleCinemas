@@ -531,6 +531,49 @@ body {
   font-weight: 700;
 }
 
+.recommendation-actions {
+  margin-top: 0.35rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.42rem;
+}
+
+.recommendation-action {
+  border: 1px solid #aac4e7;
+  background: linear-gradient(180deg, #edf5ff, #dcecff);
+  color: #15355f;
+  border-radius: 999px;
+  padding: 0.32rem 0.62rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+}
+
+.recommendation-action:hover {
+  transform: translateY(-1px);
+  border-color: #86aee0;
+  box-shadow: 0 8px 16px rgba(23, 52, 91, 0.16);
+}
+
+.recommendation-action:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.recommendation-action.is-active {
+  background: linear-gradient(180deg, #14468a, #0f3d79);
+  border-color: #0e3a70;
+  color: #f4f8ff;
+}
+
+.recommendation-action-muted {
+  background: #f4f7fd;
+  border-color: #cedbeb;
+  color: #4c5f7c;
+}
+
 .home-steps-grid {
   display: grid;
   gap: 0.7rem;

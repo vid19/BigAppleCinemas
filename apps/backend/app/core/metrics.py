@@ -13,6 +13,7 @@ METRIC_DEFINITIONS: dict[str, str] = {
     "ticket_scan_valid_total": "Ticket scans validated and marked used.",
     "ticket_scan_invalid_total": "Ticket scans rejected as invalid.",
     "ticket_scan_already_used_total": "Ticket scans rejected as already used.",
+    "recommendation_feedback_total": "Recommendation feedback events submitted.",
 }
 
 

@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     recommendation_similarity_top_k: int = 16
     recommendation_ranker_variant: str = "A"
     recommendation_diversity_penalty: float = 0.08
+    recommendation_save_for_later_boost: float = 0.2
     recommendation_rebuild_hour_utc: int = 3
     recommendation_rebuild_minute_utc: int = 30
 
