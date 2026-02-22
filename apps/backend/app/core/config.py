@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     reservation_hold_minutes: int = 8
     bootstrap_demo_data: bool = True
+    cors_allow_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
 
 @lru_cache
