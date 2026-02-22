@@ -19,6 +19,8 @@ Production-grade movie ticketing platform built with FastAPI + React.
 - `.github/workflows`: CI/CD workflows
 - `infra/`: infra stubs for NGINX/Prometheus/Grafana
 - `docs/`: architecture, concurrency, payments, deployment notes
+- `docs/ux-design-brief.md`: UX strategy and deliverables for upcoming development
+- `docs/phase-2-plan.md`: scheduled Phase 2 execution plan and git checkpoints
 
 ## Local Development
 
