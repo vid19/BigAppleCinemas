@@ -8,6 +8,7 @@
 - Background workers:
   - `worker` service executes async jobs
   - `beat` service schedules periodic jobs (reservation expiry sweep)
+- Redis is also used for API rate-limiting and webhook idempotency keys.
 
 ## Target platforms
 

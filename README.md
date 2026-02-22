@@ -26,6 +26,7 @@ Production-grade movie ticketing platform built with FastAPI + React.
 - `docs/phase-4-plan.md`: concurrency-safe reservation hold implementation plan
 - `docs/phase-5-plan.md`: checkout and webhook-based payment finalization plan
 - `docs/phase-6-plan.md`: ticket validation, user portal, and admin sales snapshot plan
+- `docs/phase-7-plan.md`: production hardening with rate limits and request correlation
 
 ## Local Development
 
