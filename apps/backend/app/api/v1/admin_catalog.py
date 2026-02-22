@@ -3,6 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.cache import delete_cache_prefix
 from app.db.session import get_db_session
 from app.models.movie import Movie
 from app.models.showtime import Auditorium, Showtime, Theater
@@ -19,6 +20,13 @@ from app.schemas.catalog import (
 )
 
 router = APIRouter()
+
+
+async def _invalidate_catalog_cache() -> None:
+    await delete_cache_prefix("catalog:movies:")
+    await delete_cache_prefix("catalog:movie:")
+    await delete_cache_prefix("catalog:theaters:")
+    await delete_cache_prefix("catalog:showtimes:")
 
 
 def _apply_updates(instance: object, updates: dict) -> None:
@@ -57,6 +65,7 @@ async def create_movie(
     session.add(movie)
     await session.commit()
     await session.refresh(movie)
+    await _invalidate_catalog_cache()
     return MovieDetail.model_validate(movie)
 
 
@@ -77,6 +86,7 @@ async def update_movie(
     _apply_updates(movie, updates)
     await session.commit()
     await session.refresh(movie)
+    await _invalidate_catalog_cache()
     return MovieDetail.model_validate(movie)
 
 
@@ -98,6 +108,7 @@ async def delete_movie(
             status_code=409,
             detail="Movie is referenced by other records and cannot be deleted",
         ) from exc
+    await _invalidate_catalog_cache()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -110,6 +121,7 @@ async def create_theater(
     session.add(theater)
     await session.commit()
     await session.refresh(theater)
+    await _invalidate_catalog_cache()
     return TheaterRead.model_validate(theater)
 
 
@@ -132,6 +144,7 @@ async def update_theater(
     _apply_updates(theater, updates)
     await session.commit()
     await session.refresh(theater)
+    await _invalidate_catalog_cache()
     return TheaterRead.model_validate(theater)
 
 
@@ -155,6 +168,7 @@ async def delete_theater(
             status_code=409,
             detail="Theater is referenced by other records and cannot be deleted",
         ) from exc
+    await _invalidate_catalog_cache()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -181,6 +195,7 @@ async def create_showtime(
     showtime = Showtime(**payload.model_dump())
     session.add(showtime)
     await session.commit()
+    await _invalidate_catalog_cache()
     return await _get_showtime_read(session, showtime.id)
 
 
@@ -224,6 +239,7 @@ async def update_showtime(
 
     _apply_updates(showtime, updates)
     await session.commit()
+    await _invalidate_catalog_cache()
     return await _get_showtime_read(session, showtime.id)
 
 
@@ -247,4 +263,5 @@ async def delete_showtime(
             status_code=409,
             detail="Showtime is referenced by other records and cannot be deleted",
         ) from exc
+    await _invalidate_catalog_cache()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
