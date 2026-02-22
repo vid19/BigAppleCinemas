@@ -146,7 +146,7 @@ export function SeatSelectionPage() {
     .padStart(2, "0")}:${(remainingSeconds % 60).toString().padStart(2, "0")}`;
 
   return (
-    <section className="page seat-page">
+    <section className="page page-shell seat-page seat-page-modern">
       <div className="seat-stage-card">
         <p className="hero-kicker">Showtime #{seatData.showtime_id}</p>
         <h2>Select your seats</h2>
@@ -159,9 +159,22 @@ export function SeatSelectionPage() {
         )}
       </div>
 
-      <div className="seat-layout-wrap">
-        <div className="seat-layout-panel">
-          <div className="seat-legend">
+      <div className="seat-layout-wrap seat-layout-modern">
+        <aside className="seat-summary-card seat-booking-panel">
+          <h3>Booking summary</h3>
+          <p>{seatData.seatmap_name || "Standard layout"}</p>
+          <p className="seat-selection-copy">
+            {selectedSeatDetails.length > 0
+              ? selectedSeatDetails.map((seat) => seat.seat_code).join(", ")
+              : "No seats selected yet."}
+          </p>
+
+          <div className="seat-price-strip">
+            <span>{selectedSeatDetails.length} seats selected</span>
+            <strong>${(selectedSeatDetails.length * 15).toFixed(2)}</strong>
+          </div>
+
+          <div className="seat-summary-stats">
             <span>
               <i className="seat-dot available" />
               Available ({availableCount})
@@ -180,50 +193,6 @@ export function SeatSelectionPage() {
             </span>
           </div>
 
-          <div className="seat-grid-wrap">
-            <div
-              className="seat-grid"
-              style={{ gridTemplateColumns: `repeat(${maxSeatNumber}, minmax(36px, 1fr))` }}
-            >
-              {seats.map((seat) => {
-                const isSelected = selectedSeatIds.includes(seat.seat_id);
-                const isSelectable = seat.status === "AVAILABLE";
-                return (
-                  <button
-                    key={seat.seat_id}
-                    type="button"
-                    className={`seat-button ${seat.status.toLowerCase()} ${
-                      isSelected ? "selected" : ""
-                    }`}
-                    disabled={!isSelectable || activeHold}
-                    title={`${seat.seat_code} • ${seat.seat_type}`}
-                    onClick={() => {
-                      if (!isSelectable) {
-                        return;
-                      }
-                      setSelectedSeatIds((previous) =>
-                        previous.includes(seat.seat_id)
-                          ? previous.filter((value) => value !== seat.seat_id)
-                          : [...previous, seat.seat_id]
-                      );
-                    }}
-                  >
-                    {seat.seat_code}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        <aside className="seat-summary-card">
-          <h3>Booking summary</h3>
-          <p>{seatData.seatmap_name || "Standard layout"}</p>
-          <p>
-            {selectedSeatDetails.length > 0
-              ? selectedSeatDetails.map((seat) => seat.seat_code).join(", ")
-              : "No seats selected yet."}
-          </p>
           <div className="seat-summary-actions">
             <Link to={`/movies/${seatData.movie_id}`}>Back to showtimes</Link>
             {!activeHold && (
@@ -261,6 +230,62 @@ export function SeatSelectionPage() {
           </div>
           <p className="status">{feedback || "Select seats and start a timed hold."}</p>
         </aside>
+
+        <div className="seat-layout-panel seat-layout-canvas">
+          <p className="seat-screen-text">Screen</p>
+          <div className="seat-grid-wrap">
+            <div
+              className="seat-grid"
+              style={{ gridTemplateColumns: `repeat(${maxSeatNumber}, minmax(34px, 1fr))` }}
+            >
+              {seats.map((seat) => {
+                const isSelected = selectedSeatIds.includes(seat.seat_id);
+                const isSelectable = seat.status === "AVAILABLE";
+                return (
+                  <button
+                    key={seat.seat_id}
+                    type="button"
+                    className={`seat-button ${seat.status.toLowerCase()} ${
+                      isSelected ? "selected" : ""
+                    }`}
+                    disabled={!isSelectable || activeHold}
+                    title={`${seat.seat_code} • ${seat.seat_type}`}
+                    onClick={() => {
+                      if (!isSelectable) {
+                        return;
+                      }
+                      setSelectedSeatIds((previous) =>
+                        previous.includes(seat.seat_id)
+                          ? previous.filter((value) => value !== seat.seat_id)
+                          : [...previous, seat.seat_id]
+                      );
+                    }}
+                  >
+                    {seat.seat_code}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="seat-legend">
+            <span>
+              <i className="seat-dot available" />
+              Available
+            </span>
+            <span>
+              <i className="seat-dot held" />
+              Held
+            </span>
+            <span>
+              <i className="seat-dot sold" />
+              Sold
+            </span>
+            <span>
+              <i className="seat-dot selected" />
+              Selected
+            </span>
+          </div>
+        </div>
       </div>
     </section>
   );

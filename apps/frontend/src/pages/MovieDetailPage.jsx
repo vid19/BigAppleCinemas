@@ -75,17 +75,26 @@ export function MovieDetailPage() {
   const theaters = theatersQuery.data?.items ?? [];
 
   return (
-    <section className="page">
-      <div className="page-header">
-        <h2>{movie.title}</h2>
-        <p>
-          {movie.rating} • {movie.runtime_minutes} min • Release {formatDate(movie.release_date)}
-        </p>
+    <section className="page page-shell">
+      <div className="movie-detail-hero">
+        <div className="movie-detail-poster">
+          {movie.poster_url ? (
+            <img src={movie.poster_url} alt={`${movie.title} poster`} />
+          ) : (
+            <span>{movie.title.slice(0, 1)}</span>
+          )}
+        </div>
+        <div className="page-header page-header-modern">
+          <h2>{movie.title}</h2>
+          <p>
+            {movie.rating} • {movie.runtime_minutes} min • Release {formatDate(movie.release_date)}
+          </p>
+        </div>
       </div>
 
       <p className="movie-description">{movie.description || "Description coming soon."}</p>
 
-      <div className="filters-wrap">
+      <div className="filters-wrap filters-wrap-modern">
         <div className="filter-row">
           <label htmlFor="show-date">Show date</label>
           <input

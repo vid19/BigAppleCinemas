@@ -187,8 +187,8 @@ export function AdminDashboardPage() {
   const movieOptions = useMemo(() => movieItems.map((movie) => ({ id: movie.id, title: movie.title })), [movieItems]);
 
   return (
-    <section className="page">
-      <div className="page-header">
+    <section className="page page-shell admin-dashboard-page">
+      <div className="page-header page-header-modern">
         <h2>Admin Dashboard</h2>
         <p>Manage catalog entities for demo environments.</p>
       </div>
