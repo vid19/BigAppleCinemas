@@ -1,7 +1,20 @@
+from uuid import uuid4
+
 from fastapi.testclient import TestClient
 
 
-def _create_paid_ticket(client: TestClient) -> str:
+def _register_user_headers(client: TestClient) -> dict[str, str]:
+    email = f"reco-{uuid4().hex[:10]}@bigapplecinemas.local"
+    response = client.post(
+        "/api/auth/register",
+        json={"email": email, "password": "Password123!"},
+    )
+    assert response.status_code == 201
+    token = response.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
+def _create_paid_ticket(client: TestClient, *, headers: dict[str, str] | None = None) -> str:
     showtimes_response = client.get("/api/showtimes", params={"limit": 1, "offset": 0})
     assert showtimes_response.status_code == 200
     showtime_id = showtimes_response.json()["items"][0]["id"]
@@ -16,6 +29,7 @@ def _create_paid_ticket(client: TestClient) -> str:
     reservation_response = client.post(
         "/api/reservations",
         json={"showtime_id": showtime_id, "seat_ids": [seat["seat_id"]]},
+        headers=headers,
     )
     assert reservation_response.status_code == 201
     reservation_id = reservation_response.json()["id"]
@@ -23,11 +37,16 @@ def _create_paid_ticket(client: TestClient) -> str:
     checkout_response = client.post(
         "/api/checkout/session",
         json={"reservation_id": reservation_id},
+        headers=headers,
     )
     assert checkout_response.status_code == 201
     order_id = checkout_response.json()["order_id"]
 
-    confirm_response = client.post("/api/checkout/demo/confirm", json={"order_id": order_id})
+    confirm_response = client.post(
+        "/api/checkout/demo/confirm",
+        json={"order_id": order_id},
+        headers=headers,
+    )
     assert confirm_response.status_code == 200
     tickets = confirm_response.json()["tickets"]
     assert len(tickets) == 1
@@ -77,13 +96,14 @@ def test_me_endpoints_return_orders_and_tickets(client: TestClient) -> None:
 
 
 def test_me_recommendations_endpoint_returns_ranked_movies(client: TestClient) -> None:
-    _create_paid_ticket(client)
+    headers = _register_user_headers(client)
+    _create_paid_ticket(client, headers=headers)
 
-    tickets_response = client.get("/api/me/tickets")
+    tickets_response = client.get("/api/me/tickets", headers=headers)
     assert tickets_response.status_code == 200
     watched_movies = {item["movie_title"] for item in tickets_response.json()["items"]}
 
-    response = client.get("/api/me/recommendations", params={"limit": 5})
+    response = client.get("/api/me/recommendations", params={"limit": 5}, headers=headers)
     assert response.status_code == 200
     payload = response.json()
     assert payload["total"] >= 1
@@ -97,6 +117,62 @@ def test_me_recommendations_endpoint_returns_ranked_movies(client: TestClient) -
         item["reason"].startswith("Because you watched") or item["reason"].startswith("Trending")
         for item in payload["items"]
     )
+
+
+def test_recommendation_feedback_filters_not_interested_movies(client: TestClient) -> None:
+    headers = _register_user_headers(client)
+
+    recommendations = client.get("/api/me/recommendations", params={"limit": 10}, headers=headers)
+    assert recommendations.status_code == 200
+    items = recommendations.json()["items"]
+    assert items
+
+    movie_id = items[0]["movie_id"]
+    feedback_response = client.post(
+        "/api/me/recommendations/feedback",
+        json={
+            "movie_id": movie_id,
+            "event_type": "NOT_INTERESTED",
+            "active": True,
+        },
+        headers=headers,
+    )
+    assert feedback_response.status_code == 200
+    assert feedback_response.json()["active"] is True
+
+    refreshed = client.get("/api/me/recommendations", params={"limit": 10}, headers=headers)
+    refreshed_ids = {item["movie_id"] for item in refreshed.json()["items"]}
+    assert movie_id not in refreshed_ids
+
+
+def test_recommendation_feedback_save_for_later_reason(client: TestClient) -> None:
+    headers = _register_user_headers(client)
+
+    initial = client.get("/api/me/recommendations", params={"limit": 10}, headers=headers)
+    assert initial.status_code == 200
+    items = initial.json()["items"]
+    assert items
+    movie_id = items[0]["movie_id"]
+
+    save_response = client.post(
+        "/api/me/recommendations/feedback",
+        json={
+            "movie_id": movie_id,
+            "event_type": "SAVE_FOR_LATER",
+            "active": True,
+        },
+        headers=headers,
+    )
+    assert save_response.status_code == 200
+    assert save_response.json()["event_type"] == "SAVE_FOR_LATER"
+
+    updated = client.get("/api/me/recommendations", params={"limit": 10}, headers=headers)
+    updated_items = updated.json()["items"]
+    assert updated_items
+    selected = next((item for item in updated_items if item["movie_id"] == movie_id), None)
+    assert selected is not None
+    assert selected["reason"] == "Saved for later"
+
 
 def test_admin_sales_report_endpoint(client: TestClient) -> None:
     response = client.get("/api/admin/reports/sales", params={"limit": 5})

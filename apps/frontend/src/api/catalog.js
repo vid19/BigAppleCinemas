@@ -124,6 +124,10 @@ export function fetchMyRecommendations({ limit = 8 } = {}) {
   return request("/me/recommendations", { params: { limit } });
 }
 
+export function submitRecommendationFeedback(payload) {
+  return request("/me/recommendations/feedback", { method: "POST", body: payload });
+}
+
 export function scanTicket(payload, { staffToken } = {}) {
   return request("/tickets/scan", {
     method: "POST",

@@ -72,6 +72,19 @@ class MovieRecommendationResponse(BaseModel):
     total: int
 
 
+class RecommendationFeedbackWrite(BaseModel):
+    movie_id: int = Field(ge=1)
+    event_type: str = Field(pattern="^(NOT_INTERESTED|SAVE_FOR_LATER)$")
+    active: bool = True
+
+
+class RecommendationFeedbackRead(BaseModel):
+    movie_id: int
+    event_type: str
+    active: bool
+    recorded_at: datetime | None = None
+
+
 class AdminShowtimeSalesItem(BaseModel):
     showtime_id: int
     movie_title: str

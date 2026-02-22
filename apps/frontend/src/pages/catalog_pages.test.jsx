@@ -10,12 +10,14 @@ import { SeatSelectionPage } from "./SeatSelectionPage";
 
 const useQueryMock = vi.fn();
 const useMutationMock = vi.fn();
+const useQueryClientMock = vi.fn();
 const useAuthMock = vi.fn();
 let paramsMock = { movieId: "3" };
 
 vi.mock("@tanstack/react-query", () => ({
   useQuery: (options) => useQueryMock(options),
-  useMutation: (options) => useMutationMock(options)
+  useMutation: (options) => useMutationMock(options),
+  useQueryClient: () => useQueryClientMock()
 }));
 
 vi.mock("react-router-dom", async () => {
@@ -38,6 +40,7 @@ beforeEach(() => {
   paramsMock = { movieId: "3" };
   useQueryMock.mockReset();
   useMutationMock.mockReset();
+  useQueryClientMock.mockReset();
   useAuthMock.mockReset();
   useAuthMock.mockReturnValue({
     isAuthenticated: false
@@ -45,6 +48,9 @@ beforeEach(() => {
   useMutationMock.mockReturnValue({
     mutate: vi.fn(),
     isPending: false
+  });
+  useQueryClientMock.mockReturnValue({
+    invalidateQueries: vi.fn()
   });
 });
 
@@ -292,5 +298,7 @@ describe("catalog pages", () => {
     expect(html).toContain("Recommended for you");
     expect(html).toContain("Midnight Orbit");
     expect(html).toContain("Because you watch Sci-Fi movies");
+    expect(html).toContain("Save for later");
+    expect(html).toContain("Not interested");
   });
 });

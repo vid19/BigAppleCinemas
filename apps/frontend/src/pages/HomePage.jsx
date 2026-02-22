@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useAuth } from "../auth/AuthContext";
-import { fetchMovies, fetchMyRecommendations } from "../api/catalog";
+import {
+  fetchMovies,
+  fetchMyRecommendations,
+  submitRecommendationFeedback
+} from "../api/catalog";
 
 const BOOKING_STEPS = [
   {
@@ -47,6 +51,7 @@ const FALLBACK_SLIDES = [
 
 export function HomePage() {
   const { isAuthenticated } = useAuth();
+  const queryClient = useQueryClient();
   const moviesQuery = useQuery({
     queryKey: ["home-featured-movies"],
     queryFn: () => fetchMovies({ limit: 6, offset: 0 }),
@@ -62,7 +67,30 @@ export function HomePage() {
 
   const featuredMovies = moviesQuery.data?.items ?? [];
   const recommendationItems = recommendationsQuery.data?.items ?? [];
+  const [dismissedRecommendationIds, setDismissedRecommendationIds] = useState([]);
+  const [savedRecommendationIds, setSavedRecommendationIds] = useState([]);
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
+
+  const recommendationFeedbackMutation = useMutation({
+    mutationFn: submitRecommendationFeedback,
+    onSuccess: (_, variables) => {
+      if (variables.event_type === "NOT_INTERESTED" && variables.active) {
+        setDismissedRecommendationIds((currentIds) => [...new Set([...currentIds, variables.movie_id])]);
+      }
+      if (variables.event_type === "SAVE_FOR_LATER" && variables.active) {
+        setSavedRecommendationIds((currentIds) => [...new Set([...currentIds, variables.movie_id])]);
+      }
+      if (!variables.active) {
+        setDismissedRecommendationIds((currentIds) =>
+          currentIds.filter((movieId) => movieId !== variables.movie_id)
+        );
+        setSavedRecommendationIds((currentIds) =>
+          currentIds.filter((movieId) => movieId !== variables.movie_id)
+        );
+      }
+      queryClient.invalidateQueries({ queryKey: ["home-recommendations"] });
+    }
+  });
 
   function formatShowtime(dateValue) {
     return new Date(dateValue).toLocaleString([], {
@@ -91,11 +119,34 @@ export function HomePage() {
     }));
   }, [featuredMovies]);
 
+  const visibleRecommendations = useMemo(
+    () =>
+      recommendationItems.filter(
+        (movie) => !dismissedRecommendationIds.includes(movie.movie_id)
+      ),
+    [dismissedRecommendationIds, recommendationItems]
+  );
+
+  function handleRecommendationFeedback(movieId, eventType) {
+    recommendationFeedbackMutation.mutate({
+      movie_id: movieId,
+      event_type: eventType,
+      active: true
+    });
+  }
+
   useEffect(() => {
     if (activeSlideIndex >= bannerSlides.length) {
       setActiveSlideIndex(0);
     }
   }, [activeSlideIndex, bannerSlides.length]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setDismissedRecommendationIds([]);
+      setSavedRecommendationIds([]);
+    }
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (bannerSlides.length <= 1) {
@@ -279,14 +330,14 @@ export function HomePage() {
           {isAuthenticated &&
             !recommendationsQuery.isLoading &&
             !recommendationsQuery.isError &&
-            recommendationItems.length === 0 && (
+            visibleRecommendations.length === 0 && (
               <p className="status">
                 No personalized picks yet. Book a movie and recommendations will appear here.
               </p>
             )}
-          {isAuthenticated && recommendationItems.length > 0 && (
+          {isAuthenticated && visibleRecommendations.length > 0 && (
             <div className="home-recommendation-grid">
-              {recommendationItems.map((movie) => (
+              {visibleRecommendations.map((movie) => (
                 <article className="home-recommendation-card" key={movie.movie_id}>
                   <div className="home-recommendation-banner">
                     {movie.poster_url ? (
@@ -302,6 +353,30 @@ export function HomePage() {
                       Next showtime: {formatShowtime(movie.next_showtime_starts_at)}
                     </small>
                     <Link to={`/movies/${movie.movie_id}`}>View showtimes</Link>
+                    <div className="recommendation-actions">
+                      <button
+                        className={`recommendation-action ${savedRecommendationIds.includes(movie.movie_id) ? "is-active" : ""}`}
+                        disabled={recommendationFeedbackMutation.isPending}
+                        onClick={() =>
+                          handleRecommendationFeedback(movie.movie_id, "SAVE_FOR_LATER")
+                        }
+                        type="button"
+                      >
+                        {savedRecommendationIds.includes(movie.movie_id)
+                          ? "Saved"
+                          : "Save for later"}
+                      </button>
+                      <button
+                        className="recommendation-action recommendation-action-muted"
+                        disabled={recommendationFeedbackMutation.isPending}
+                        onClick={() =>
+                          handleRecommendationFeedback(movie.movie_id, "NOT_INTERESTED")
+                        }
+                        type="button"
+                      >
+                        Not interested
+                      </button>
+                    </div>
                   </div>
                 </article>
               ))}

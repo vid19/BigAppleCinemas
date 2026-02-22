@@ -37,6 +37,8 @@ from app.schemas.portal import (
     MyOrderListResponse,
     MyTicketItem,
     MyTicketListResponse,
+    RecommendationFeedbackRead,
+    RecommendationFeedbackWrite,
     TicketScanRequest,
     TicketScanResponse,
 )
@@ -64,6 +66,8 @@ __all__ = [
     "MyOrderListResponse",
     "MyTicketItem",
     "MyTicketListResponse",
+    "RecommendationFeedbackRead",
+    "RecommendationFeedbackWrite",
     "ReservationCreate",
     "ReservationRead",
     "ShowtimeCreate",

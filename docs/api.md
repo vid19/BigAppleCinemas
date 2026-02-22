@@ -47,7 +47,9 @@ Base URL: `http://localhost:8000/api`
 - `GET /me/tickets`
 - `GET /me/orders`
 - `GET /me/recommendations`
+- `POST /me/recommendations/feedback`
   - All require bearer token
+  - Feedback `event_type`: `NOT_INTERESTED` or `SAVE_FOR_LATER`
   - Ranking blends personalized similarity + popularity + freshness + diversity
   - Response includes explainability text in `reason`
 
