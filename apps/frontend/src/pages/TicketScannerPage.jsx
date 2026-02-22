@@ -13,13 +13,13 @@ export function TicketScannerPage() {
   });
 
   return (
-    <section className="page">
-      <div className="page-header">
+    <section className="page page-shell">
+      <div className="page-header page-header-modern">
         <h2>Ticket Scanner</h2>
         <p>Validate ticket tokens at entry and prevent duplicate usage.</p>
       </div>
 
-      <article className="admin-card">
+      <article className="admin-card scanner-card">
         <form
           onSubmit={(event) => {
             event.preventDefault();
@@ -46,7 +46,7 @@ export function TicketScannerPage() {
 
       {scanMutation.isError && <p className="status error">{scanMutation.error.message}</p>}
       {scanMutation.isSuccess && (
-        <article className="admin-card">
+        <article className="admin-card scanner-card">
           <h3>Scan result: {scanMutation.data.result}</h3>
           <p className="status">{scanMutation.data.message}</p>
           {scanMutation.data.ticket_id && (

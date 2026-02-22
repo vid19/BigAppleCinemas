@@ -28,13 +28,13 @@ export function MoviesPage() {
   const hasNext = offset + PAGE_SIZE < total;
 
   return (
-    <section className="page">
-      <div className="page-header">
+    <section className="page page-shell">
+      <div className="page-header page-header-modern">
         <h2>Movies</h2>
-        <p>Find what is playing now and pick a showtime.</p>
+        <p>Discover what is playing now and jump straight into seat booking.</p>
       </div>
 
-      <div className="search-row">
+      <div className="search-row search-row-modern">
         <input
           value={query}
           onChange={(event) => {

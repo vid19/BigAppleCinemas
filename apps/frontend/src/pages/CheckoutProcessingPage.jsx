@@ -13,14 +13,14 @@ export function CheckoutProcessingPage() {
 
   if (!Number.isFinite(orderId) || orderId < 1) {
     return (
-      <section className="page">
+      <section className="page page-shell">
         <p className="status error">Invalid checkout URL. Missing order ID.</p>
       </section>
     );
   }
 
   return (
-    <section className="page checkout-page">
+    <section className="page page-shell checkout-page">
       <div className="checkout-card">
         <p className="hero-kicker">Checkout Processing</p>
         <h2>Complete payment</h2>

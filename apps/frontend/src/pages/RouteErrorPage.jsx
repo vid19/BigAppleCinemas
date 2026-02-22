@@ -18,10 +18,14 @@ export function RouteErrorPage() {
   }
 
   return (
-    <section className="page">
-      <h2>{title}</h2>
+    <section className="page page-shell">
+      <div className="page-header page-header-modern">
+        <h2>{title}</h2>
+      </div>
       <p className="status error">{detail}</p>
-      <Link to="/">Back to home</Link>
+      <Link className="home-inline-link" to="/">
+        Back to home
+      </Link>
     </section>
   );
 }

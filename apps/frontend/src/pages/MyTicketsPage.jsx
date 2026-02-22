@@ -34,8 +34,8 @@ export function MyTicketsPage() {
   const orders = ordersQuery.data?.items ?? [];
 
   return (
-    <section className="page">
-      <div className="page-header">
+    <section className="page page-shell">
+      <div className="page-header page-header-modern">
         <h2>My Tickets</h2>
         <p>View active QR tickets and your recent order history.</p>
       </div>
@@ -49,7 +49,7 @@ export function MyTicketsPage() {
 
       {!ticketsQuery.isLoading && !ticketsQuery.isError && (
         <div className="ticket-grid">
-          <article className="admin-card">
+          <article className="admin-card ticket-card">
             <h3>Active tickets ({activeTickets.length})</h3>
             {activeTickets.length === 0 && <p className="status">No active tickets yet.</p>}
             {activeTickets.length > 0 && (
@@ -71,7 +71,7 @@ export function MyTicketsPage() {
             )}
           </article>
 
-          <article className="admin-card">
+          <article className="admin-card ticket-card">
             <h3>Past tickets ({pastTickets.length})</h3>
             {pastTickets.length === 0 && <p className="status">No used or void tickets.</p>}
             {pastTickets.length > 0 && (
@@ -96,7 +96,7 @@ export function MyTicketsPage() {
       )}
 
       {!ordersQuery.isLoading && !ordersQuery.isError && (
-        <article className="admin-card">
+        <article className="admin-card ticket-card">
           <h3>Orders ({orders.length})</h3>
           {orders.length === 0 && <p className="status">No orders found.</p>}
           {orders.length > 0 && (
