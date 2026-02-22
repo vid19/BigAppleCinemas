@@ -66,9 +66,16 @@ export function SeatSelectionPage() {
   const checkoutMutation = useMutation({
     mutationFn: createCheckoutSession,
     onSuccess: (payload) => {
-      navigate(
-        `/checkout/processing?order_id=${payload.order_id}&session_id=${payload.provider_session_id}`
-      );
+      const params = new globalThis.URLSearchParams({
+        order_id: String(payload.order_id),
+        session_id: payload.provider_session_id,
+        reservation_id: String(payload.reservation_id),
+        total_cents: String(payload.total_cents),
+        currency: payload.currency,
+        provider: payload.provider,
+        seat_count: String(reservation?.seat_ids?.length ?? selectedSeatDetails.length)
+      });
+      navigate(`/checkout/processing?${params.toString()}`);
     },
     onError: (error) => setFeedback(error.message)
   });
@@ -224,7 +231,7 @@ export function SeatSelectionPage() {
                 disabled={checkoutMutation.isPending}
                 onClick={() => checkoutMutation.mutate({ reservation_id: reservation.id })}
               >
-                {checkoutMutation.isPending ? "Starting checkout..." : "Proceed to checkout"}
+                {checkoutMutation.isPending ? "Preparing checkout..." : "Review and pay"}
               </button>
             )}
           </div>

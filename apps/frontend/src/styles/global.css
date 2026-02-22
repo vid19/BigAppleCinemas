@@ -948,26 +948,82 @@ body {
   display: grid;
 }
 
+.checkout-grid {
+  display: grid;
+  gap: 1rem;
+}
+
 .checkout-card {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 1rem;
-  max-width: 700px;
 }
 
 .checkout-card h2 {
   margin: 0.4rem 0 0.5rem;
 }
 
-.checkout-card button {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--brand-soft);
-  color: var(--brand);
+.checkout-form {
+  display: grid;
+  gap: 0.8rem;
+  margin-top: 0.8rem;
+}
+
+.payment-method-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.payment-method-chip {
+  border: 1px solid #bfd3ee;
+  border-radius: 999px;
+  background: #f3f8ff;
+  color: #1d4c84;
   font-weight: 700;
-  padding: 0.55rem 0.8rem;
-  cursor: pointer;
+  font-size: 0.86rem;
+  padding: 0.42rem 0.8rem;
+}
+
+.payment-method-chip.is-active {
+  background: #deebfc;
+  border-color: #8fb3e7;
+  color: #0f4a95;
+}
+
+.checkout-fields {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.checkout-fields label {
+  display: grid;
+  gap: 0.35rem;
+  font-weight: 600;
+  color: #2b4d74;
+}
+
+.checkout-inline-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+
+.checkout-demo-note {
+  margin: 0;
+  color: #5c7190;
+  font-size: 0.85rem;
+}
+
+.checkout-seat-list {
+  color: #4f6482;
+}
+
+.checkout-success-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
 }
 
 .checkout-success ul {
@@ -979,6 +1035,12 @@ body {
   color: var(--brand);
   text-decoration: none;
   font-weight: 700;
+}
+
+.checkout-secure-note {
+  margin: 0.6rem 0 0;
+  color: #4f6482;
+  font-size: 0.85rem;
 }
 
 @media (min-width: 768px) {
@@ -1271,6 +1333,29 @@ body {
   box-shadow: 0 12px 28px rgba(16, 44, 81, 0.08);
 }
 
+.checkout-page-modern .checkout-payment-card {
+  background: linear-gradient(180deg, #ffffff, #f7fbff);
+}
+
+.checkout-page-modern .checkout-summary-card {
+  background: linear-gradient(180deg, #0f2139, #0a1728);
+  border-color: #304e74;
+  color: #dceafc;
+}
+
+.checkout-page-modern .checkout-summary-card h3 {
+  margin: 0 0 0.65rem;
+  color: #f4f9ff;
+}
+
+.checkout-page-modern .checkout-summary-card p {
+  color: #d2e3fa;
+}
+
+.checkout-page-modern .checkout-summary-card strong {
+  color: #ffffff;
+}
+
 .seat-page-modern .seat-stage-card {
   background: radial-gradient(circle at 20% 0%, #18457d 0%, #0f2f57 44%, #081a30 100%);
   border: 1px solid #17375c;
@@ -1425,6 +1510,11 @@ body {
 
   .movie-detail-poster {
     min-height: 220px;
+  }
+
+  .checkout-grid {
+    grid-template-columns: 1.45fr 1fr;
+    align-items: start;
   }
 
   .seat-page-modern .seat-layout-modern {
