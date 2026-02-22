@@ -1,6 +1,6 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
 
-async function request(path, params = {}) {
+async function request(path, { params = {}, method = "GET", body } = {}) {
   const url = new URL(`${API_BASE_URL}${path}`);
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== "") {
@@ -8,16 +8,33 @@ async function request(path, params = {}) {
     }
   });
 
-  const response = await fetch(url.toString());
+  const response = await fetch(url.toString(), {
+    method,
+    headers: body ? { "Content-Type": "application/json" } : undefined,
+    body: body ? JSON.stringify(body) : undefined
+  });
   if (!response.ok) {
-    throw new Error(`Request failed with status ${response.status}`);
+    let detail = "";
+    try {
+      const payload = await response.json();
+      if (payload?.detail) {
+        detail = `: ${payload.detail}`;
+      }
+    } catch {
+      // no-op
+    }
+    throw new Error(`Request failed with status ${response.status}${detail}`);
+  }
+
+  if (response.status === 204) {
+    return null;
   }
 
   return response.json();
 }
 
 export function fetchMovies({ q = "", limit = 12, offset = 0 } = {}) {
-  return request("/movies", { q, limit, offset });
+  return request("/movies", { params: { q, limit, offset } });
 }
 
 export function fetchMovie(movieId) {
@@ -25,5 +42,23 @@ export function fetchMovie(movieId) {
 }
 
 export function fetchShowtimes({ movieId, date, limit = 20, offset = 0 } = {}) {
-  return request("/showtimes", { movie_id: movieId, date, limit, offset });
+  return request("/showtimes", {
+    params: { movie_id: movieId, date, limit, offset }
+  });
+}
+
+export function createMovie(payload) {
+  return request("/admin/movies", { method: "POST", body: payload });
+}
+
+export function deleteMovie(movieId) {
+  return request(`/admin/movies/${movieId}`, { method: "DELETE" });
+}
+
+export function createTheater(payload) {
+  return request("/admin/theaters", { method: "POST", body: payload });
+}
+
+export function createShowtime(payload) {
+  return request("/admin/showtimes", { method: "POST", body: payload });
 }
