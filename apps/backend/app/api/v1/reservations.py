@@ -3,6 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.rate_limit import create_rate_limiter
 from app.db.session import get_db_session
 from app.models.reservation import Reservation, ReservationSeat
 from app.models.user import User
@@ -11,6 +12,11 @@ from app.services.reservation_service import ReservationService
 
 router = APIRouter()
 reservation_service = ReservationService()
+reservation_create_rate_limiter = create_rate_limiter(
+    key_prefix="reservations:create",
+    max_requests=lambda: settings.rate_limit_reservations_create,
+    window_seconds=lambda: settings.rate_limit_reservations_window_seconds,
+)
 
 
 def get_current_user_id(x_user_id: int | None = Header(default=None)) -> int:
@@ -58,6 +64,7 @@ async def _get_reservation_read(
 async def create_reservation(
     payload: ReservationCreate,
     session: AsyncSession = Depends(get_db_session),
+    _: None = Depends(reservation_create_rate_limiter),
     user_id: int = Depends(get_current_user_id),
 ) -> ReservationRead:
     async with session.begin():

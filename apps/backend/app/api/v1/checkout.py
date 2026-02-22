@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.reservations import get_current_user_id
 from app.core.config import settings
+from app.core.rate_limit import create_rate_limiter
 from app.db.session import get_db_session
 from app.schemas.payment import (
     CheckoutDemoConfirmRequest,
@@ -18,6 +19,11 @@ from app.services.payment_service import PaymentService
 checkout_router = APIRouter()
 webhook_router = APIRouter()
 payment_service = PaymentService()
+checkout_session_rate_limiter = create_rate_limiter(
+    key_prefix="checkout:session",
+    max_requests=lambda: settings.rate_limit_checkout_session,
+    window_seconds=lambda: settings.rate_limit_checkout_window_seconds,
+)
 
 
 @checkout_router.post(
@@ -28,6 +34,7 @@ payment_service = PaymentService()
 async def create_checkout_session(
     payload: CheckoutSessionCreate,
     session: AsyncSession = Depends(get_db_session),
+    _: None = Depends(checkout_session_rate_limiter),
     user_id: int = Depends(get_current_user_id),
 ) -> CheckoutSessionRead:
     async with session.begin():

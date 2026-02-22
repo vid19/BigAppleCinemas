@@ -2,6 +2,10 @@
 
 Base URL: `http://localhost:8000/api`
 
+## Request Context
+
+- Every response includes `X-Request-ID` for request correlation.
+
 ## Public Catalog
 
 - `GET /movies`
@@ -17,19 +21,19 @@ Base URL: `http://localhost:8000/api`
 ## Auth (Scaffold)
 
 - `POST /auth/register`
-- `POST /auth/login`
+- `POST /auth/login` (rate limited)
 
 ## Booking (Scaffold)
 
-- `POST /reservations` (creates transactional seat hold with expiry)
+- `POST /reservations` (creates transactional seat hold with expiry, rate limited)
 - `GET /reservations/{reservation_id}`
 - `DELETE /reservations/{reservation_id}` (release hold early)
-- `POST /tickets/scan` (requires `x-staff-token`)
+- `POST /tickets/scan` (requires `x-staff-token`, rate limited)
 
 ## Checkout + Payments
 
 - `POST /checkout/session`
-  - Creates pending order from active reservation (server-side total calculation)
+  - Creates pending order from active reservation (server-side total calculation, rate limited)
 - `POST /checkout/demo/confirm`
   - Local demo endpoint to finalize pending order as paid
 - `POST /webhooks/stripe`

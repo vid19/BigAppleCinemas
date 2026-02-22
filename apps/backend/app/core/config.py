@@ -22,6 +22,14 @@ class Settings(BaseSettings):
     stripe_webhook_secret: str = "change-me"
     webhook_idempotency_ttl_seconds: int = 86400
     staff_scan_token: str = "local-staff"
+    rate_limit_auth_login: int = 10
+    rate_limit_auth_window_seconds: int = 60
+    rate_limit_reservations_create: int = 20
+    rate_limit_reservations_window_seconds: int = 60
+    rate_limit_checkout_session: int = 20
+    rate_limit_checkout_window_seconds: int = 60
+    rate_limit_ticket_scan: int = 60
+    rate_limit_ticket_scan_window_seconds: int = 60
 
 
 @lru_cache
