@@ -71,6 +71,11 @@ jobs:
           else
             npm install
           fi
+      - name: Recover Rollup optional dependency
+        run: |
+          if ! node -e "require('rollup/dist/native.js')"; then
+            npm install --no-save @rollup/rollup-linux-x64-gnu
+          fi
       - name: Lint
         run: npm run lint
       - name: Test
