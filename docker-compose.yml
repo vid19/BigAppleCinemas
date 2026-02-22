@@ -23,6 +23,8 @@ services:
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     env_file:
       - ./apps/backend/.env.example
+    environment:
+      BOOTSTRAP_DEMO_DATA: "true"
     volumes:
       - ./apps/backend:/app
     ports:

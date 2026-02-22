@@ -2,6 +2,7 @@ import { createBrowserRouter } from "react-router-dom";
 
 import { AppShell } from "../components/AppShell";
 import { HomePage } from "../pages/HomePage";
+import { MovieDetailPage } from "../pages/MovieDetailPage";
 import { MoviesPage } from "../pages/MoviesPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
 import { RouteErrorPage } from "../pages/RouteErrorPage";
@@ -15,6 +16,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <HomePage /> },
       { path: "movies", element: <MoviesPage /> },
+      { path: "movies/:movieId", element: <MovieDetailPage /> },
       { path: "showtimes/:showtimeId/seats", element: <SeatSelectionPage /> },
       { path: "*", element: <NotFoundPage /> }
     ]

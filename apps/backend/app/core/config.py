@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     jwt_secret: str
     jwt_algorithm: str = "HS256"
     reservation_hold_minutes: int = 8
+    bootstrap_demo_data: bool = True
 
 
 @lru_cache
