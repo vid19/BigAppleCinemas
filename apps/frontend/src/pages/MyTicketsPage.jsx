@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { fetchMyOrders, fetchMyTickets } from "../api/catalog";
+import { TicketQrCode } from "../components/TicketQrCode";
 
 function formatDateTime(dateValue) {
   return new Date(dateValue).toLocaleString([], {
@@ -43,6 +44,28 @@ export function MyTicketsPage() {
     } catch {
       setCopiedTicketId(null);
     }
+  }
+
+  async function shareTicket(ticket) {
+    const shareText = [
+      `${ticket.movie_title}`,
+      `${ticket.theater_name}`,
+      `Seat ${ticket.seat_code}`,
+      `Token: ${ticket.qr_token}`
+    ].join(" • ");
+
+    if (globalThis.navigator?.share) {
+      try {
+        await globalThis.navigator.share({
+          title: `Ticket ${ticket.movie_title}`,
+          text: shareText
+        });
+        return;
+      } catch {
+        // fallback to copy when native share is canceled or unavailable
+      }
+    }
+    await copyToken(ticket.ticket_id, ticket.qr_token);
   }
 
   return (
@@ -89,25 +112,39 @@ export function MyTicketsPage() {
               <ul className="ticket-active-grid">
                 {activeTickets.map((ticket) => (
                   <li className="ticket-item-card" key={ticket.ticket_id}>
-                    <div className="ticket-item-top">
-                      <strong>{ticket.movie_title}</strong>
-                      <span className="ticket-pill">VALID</span>
-                    </div>
-                    <p className="status">
-                      {ticket.theater_name} • {formatDateTime(ticket.showtime_starts_at)}
-                    </p>
-                    <div className="ticket-meta-row">
-                      <span>Seat {ticket.seat_code}</span>
-                      <span>{ticket.seat_type}</span>
-                    </div>
-                    <div className="ticket-token-row">
-                      <code>{ticket.qr_token}</code>
-                      <button
-                        type="button"
-                        onClick={() => copyToken(ticket.ticket_id, ticket.qr_token)}
-                      >
-                        {copiedTicketId === ticket.ticket_id ? "Copied" : "Copy token"}
-                      </button>
+                    <div className="ticket-item-layout">
+                      <TicketQrCode
+                        movieTitle={ticket.movie_title}
+                        ticketId={ticket.ticket_id}
+                        token={ticket.qr_token}
+                      />
+                      <div className="ticket-item-content">
+                        <div className="ticket-item-top">
+                          <strong>{ticket.movie_title}</strong>
+                          <span className="ticket-pill">VALID</span>
+                        </div>
+                        <p className="status">
+                          {ticket.theater_name} • {formatDateTime(ticket.showtime_starts_at)}
+                        </p>
+                        <div className="ticket-meta-row">
+                          <span>Seat {ticket.seat_code}</span>
+                          <span>{ticket.seat_type}</span>
+                        </div>
+                        <div className="ticket-token-row">
+                          <code>{ticket.qr_token}</code>
+                          <div className="ticket-token-actions">
+                            <button
+                              type="button"
+                              onClick={() => copyToken(ticket.ticket_id, ticket.qr_token)}
+                            >
+                              {copiedTicketId === ticket.ticket_id ? "Copied" : "Copy"}
+                            </button>
+                            <button type="button" onClick={() => shareTicket(ticket)}>
+                              Share
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </li>
                 ))}
