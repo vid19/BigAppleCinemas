@@ -18,24 +18,26 @@ Base URL: `http://localhost:8000/api`
 - `GET /showtimes/{showtime_id}/seats`
   - Returns seat map metadata + per-seat showtime status (`AVAILABLE`, `HELD`, `SOLD`)
 
-## Auth (Scaffold)
+## Auth
 
-- `POST /auth/register`
-- `POST /auth/login` (rate limited)
+- `POST /auth/register` (creates user + returns JWT)
+- `POST /auth/login` (rate limited, returns JWT)
+- `GET /auth/me` (requires bearer token)
 
-## Booking (Scaffold)
+## Booking
 
-- `POST /reservations` (creates transactional seat hold with expiry, rate limited)
-- `GET /reservations/{reservation_id}`
-- `DELETE /reservations/{reservation_id}` (release hold early)
-- `POST /tickets/scan` (requires `x-staff-token`, rate limited)
+- `POST /reservations` (requires bearer token, creates transactional seat hold with expiry, rate limited)
+- `GET /reservations/active` (requires bearer token; latest active hold for a showtime)
+- `GET /reservations/{reservation_id}` (requires bearer token)
+- `DELETE /reservations/{reservation_id}` (requires bearer token; release hold early)
+- `POST /tickets/scan` (requires admin bearer token + `x-staff-token`, rate limited)
 
 ## Checkout + Payments
 
 - `POST /checkout/session`
-  - Creates pending order from active reservation (server-side total calculation, rate limited)
+  - Requires bearer token. Creates pending order from active reservation (server-side total calculation, rate limited)
 - `POST /checkout/demo/confirm`
-  - Local demo endpoint to finalize pending order as paid
+  - Requires bearer token. Local demo endpoint to finalize pending order as paid
 - `POST /webhooks/stripe`
   - Idempotent webhook consumer for `checkout.session.completed`
   - Requires `x-webhook-secret` header
@@ -44,10 +46,11 @@ Base URL: `http://localhost:8000/api`
 
 - `GET /me/tickets`
 - `GET /me/orders`
+  - Both require bearer token
 
 ## Admin Reports
 
-- `GET /admin/reports/sales`
+- `GET /admin/reports/sales` (requires admin bearer token)
 
 ## Admin Catalog CRUD
 
@@ -56,18 +59,21 @@ Base URL: `http://localhost:8000/api`
 - `POST /admin/movies`
 - `PATCH /admin/movies/{movie_id}`
 - `DELETE /admin/movies/{movie_id}`
+  - Requires admin bearer token
 
 ### Theaters
 
 - `POST /admin/theaters`
 - `PATCH /admin/theaters/{theater_id}`
 - `DELETE /admin/theaters/{theater_id}`
+  - Requires admin bearer token
 
 ### Showtimes
 
 - `POST /admin/showtimes`
 - `PATCH /admin/showtimes/{showtime_id}`
 - `DELETE /admin/showtimes/{showtime_id}`
+  - Requires admin bearer token
 
 ## Health
 

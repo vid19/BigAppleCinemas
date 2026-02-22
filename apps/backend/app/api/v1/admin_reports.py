@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import require_admin_user
 from app.db.session import get_db_session
 from app.models.movie import Movie
 from app.models.order import Order, Ticket
@@ -9,7 +10,7 @@ from app.models.reservation import Reservation, ShowtimeSeatStatus
 from app.models.showtime import Auditorium, Showtime, Theater
 from app.schemas.portal import AdminSalesReportResponse, AdminShowtimeSalesItem
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_admin_user)])
 
 
 @router.get("/sales", response_model=AdminSalesReportResponse)

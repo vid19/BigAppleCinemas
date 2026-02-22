@@ -1,3 +1,9 @@
+from app.schemas.auth import (
+    AuthLoginRequest,
+    AuthRegisterRequest,
+    AuthTokenResponse,
+    AuthUserRead,
+)
 from app.schemas.catalog import (
     MovieCreate,
     MovieDetail,
@@ -35,6 +41,10 @@ from app.schemas.portal import (
 from app.schemas.reservation import ReservationCreate, ReservationRead
 
 __all__ = [
+    "AuthLoginRequest",
+    "AuthRegisterRequest",
+    "AuthTokenResponse",
+    "AuthUserRead",
     "MovieDetail",
     "MovieCreate",
     "MovieListItem",

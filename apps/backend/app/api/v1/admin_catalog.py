@@ -3,6 +3,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import require_admin_user
 from app.core.cache import delete_cache_prefix
 from app.db.session import get_db_session
 from app.models.movie import Movie
@@ -21,7 +22,7 @@ from app.schemas.catalog import (
 )
 from app.services.seat_inventory import sync_showtime_seat_statuses
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_admin_user)])
 
 
 async def _invalidate_catalog_cache() -> None:

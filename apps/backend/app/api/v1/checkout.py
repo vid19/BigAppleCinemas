@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, status
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.v1.reservations import get_current_user_id
+from app.api.deps import get_current_user_id
 from app.core.config import settings
 from app.core.rate_limit import create_rate_limiter
 from app.db.session import get_db_session
