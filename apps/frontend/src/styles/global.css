@@ -375,6 +375,12 @@ body {
   gap: 0.45rem;
 }
 
+.ticket-grid {
+  display: grid;
+  gap: 0.9rem;
+  margin-bottom: 1rem;
+}
+
 .seat-page {
   display: grid;
   gap: 1rem;
@@ -595,5 +601,9 @@ body {
   .seat-layout-wrap {
     grid-template-columns: 2fr 1fr;
     align-items: start;
+  }
+
+  .ticket-grid {
+    grid-template-columns: 1fr 1fr;
   }
 }

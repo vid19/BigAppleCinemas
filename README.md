@@ -25,6 +25,7 @@ Production-grade movie ticketing platform built with FastAPI + React.
 - `docs/phase-3-plan.md`: seat map + showtime seat inventory implementation schedule
 - `docs/phase-4-plan.md`: concurrency-safe reservation hold implementation plan
 - `docs/phase-5-plan.md`: checkout and webhook-based payment finalization plan
+- `docs/phase-6-plan.md`: ticket validation, user portal, and admin sales snapshot plan
 
 ## Local Development
 

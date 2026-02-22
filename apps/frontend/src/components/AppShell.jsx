@@ -10,6 +10,8 @@ export function AppShell() {
         <nav>
           <Link to="/">Home</Link>
           <Link to="/movies">Movies</Link>
+          <Link to="/me/tickets">My Tickets</Link>
+          <Link to="/scan">Scan</Link>
           <Link to="/admin">Admin</Link>
         </nav>
       </header>

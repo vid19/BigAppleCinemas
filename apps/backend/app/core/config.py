@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     reservation_expiry_sweep_seconds: int = 30
     stripe_webhook_secret: str = "change-me"
     webhook_idempotency_ttl_seconds: int = 86400
+    staff_scan_token: str = "local-staff"
 
 
 @lru_cache

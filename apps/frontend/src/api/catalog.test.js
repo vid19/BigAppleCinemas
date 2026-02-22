@@ -3,12 +3,16 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   cancelReservation,
   confirmDemoCheckout,
-  createMovie,
   createCheckoutSession,
+  createMovie,
   createReservation,
   deleteMovie,
+  fetchAdminSalesReport,
+  fetchMyOrders,
+  fetchMyTickets,
   fetchMovies,
-  fetchShowtimeSeats
+  fetchShowtimeSeats,
+  scanTicket
 } from "./catalog";
 
 afterEach(() => {
@@ -138,5 +142,49 @@ describe("catalog api client", () => {
     expect(finalized.order_status).toBe("PAID");
     expect(fetchMock.mock.calls[0][0]).toContain("/api/checkout/session");
     expect(fetchMock.mock.calls[1][0]).toContain("/api/checkout/demo/confirm");
+  });
+
+  it("fetches user portal data and sales report", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ items: [], total: 0 })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ items: [], total: 0 })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ paid_orders: 0, gross_revenue_cents: 0, showtimes: [] })
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await fetchMyTickets();
+    await fetchMyOrders();
+    await fetchAdminSalesReport({ limit: 5 });
+
+    expect(fetchMock.mock.calls[0][0]).toContain("/api/me/tickets");
+    expect(fetchMock.mock.calls[1][0]).toContain("/api/me/orders");
+    expect(fetchMock.mock.calls[2][0]).toContain("/api/admin/reports/sales");
+    expect(fetchMock.mock.calls[2][0]).toContain("limit=5");
+  });
+
+  it("sends staff header for ticket scan", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ result: "VALID", message: "ok" })
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await scanTicket({ qr_token: "abc" }, { staffToken: "local-staff" });
+
+    const [, options] = fetchMock.mock.calls[0];
+    expect(options.headers["x-staff-token"]).toBe("local-staff");
   });
 });

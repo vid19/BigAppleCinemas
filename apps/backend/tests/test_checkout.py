@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 from fastapi.testclient import TestClient
 
 
@@ -54,11 +56,12 @@ def test_webhook_is_idempotent_for_duplicate_event_id(client: TestClient) -> Non
     assert checkout_response.status_code == 201
     provider_session_id = checkout_response.json()["provider_session_id"]
 
+    event_id = f"evt_{uuid4().hex}"
     first_webhook = client.post(
         "/api/webhooks/stripe",
         headers={"x-webhook-secret": "change-me"},
         json={
-            "event_id": "evt_test_duplicate_guard",
+            "event_id": event_id,
             "type": "checkout.session.completed",
             "data": {"provider_session_id": provider_session_id},
         },
@@ -70,7 +73,7 @@ def test_webhook_is_idempotent_for_duplicate_event_id(client: TestClient) -> Non
         "/api/webhooks/stripe",
         headers={"x-webhook-secret": "change-me"},
         json={
-            "event_id": "evt_test_duplicate_guard",
+            "event_id": event_id,
             "type": "checkout.session.completed",
             "data": {"provider_session_id": provider_session_id},
         },

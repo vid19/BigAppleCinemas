@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { MovieDetailPage } from "./MovieDetailPage";
 import { MoviesPage } from "./MoviesPage";
+import { MyTicketsPage } from "./MyTicketsPage";
 import { SeatSelectionPage } from "./SeatSelectionPage";
 
 const useQueryMock = vi.fn();
@@ -169,5 +170,65 @@ describe("catalog pages", () => {
     expect(html).toContain("Booking summary");
     expect(html).toContain("A1");
     expect(html).toContain("Hold seats");
+  });
+
+  it("renders my tickets and orders sections", () => {
+    useQueryMock.mockImplementation(({ queryKey }) => {
+      if (queryKey[0] === "me-tickets") {
+        return {
+          isLoading: false,
+          isError: false,
+          data: {
+            items: [
+              {
+                ticket_id: 1,
+                order_id: 7,
+                qr_token: "tkt_123",
+                ticket_status: "VALID",
+                seat_code: "B4",
+                seat_type: "PREMIUM",
+                movie_title: "Skyline Heist",
+                theater_name: "Big Apple Cinemas - Midtown",
+                showtime_id: 5,
+                showtime_starts_at: "2026-02-23T14:00:00Z",
+                used_at: null,
+                created_at: "2026-02-20T14:00:00Z"
+              }
+            ],
+            total: 1
+          }
+        };
+      }
+      if (queryKey[0] === "me-orders") {
+        return {
+          isLoading: false,
+          isError: false,
+          data: {
+            items: [
+              {
+                order_id: 7,
+                reservation_id: 3,
+                showtime_id: 5,
+                status: "PAID",
+                total_cents: 3200,
+                currency: "USD",
+                provider: "MOCK_STRIPE",
+                ticket_count: 1,
+                created_at: "2026-02-20T14:00:00Z"
+              }
+            ],
+            total: 1
+          }
+        };
+      }
+      return { isLoading: false, isError: false, data: {} };
+    });
+
+    const html = renderPage(<MyTicketsPage />);
+
+    expect(html).toContain("My Tickets");
+    expect(html).toContain("Active tickets");
+    expect(html).toContain("Skyline Heist");
+    expect(html).toContain("Order #7");
   });
 });

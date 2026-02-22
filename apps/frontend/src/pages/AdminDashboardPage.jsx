@@ -8,6 +8,7 @@ import {
   deleteMovie,
   deleteShowtime,
   deleteTheater,
+  fetchAdminSalesReport,
   fetchMovies,
   fetchShowtimes,
   fetchTheaters,
@@ -84,6 +85,10 @@ export function AdminDashboardPage() {
     queryKey: ["admin-theaters"],
     queryFn: () => fetchTheaters({ limit: 100, offset: 0 })
   });
+  const salesReportQuery = useQuery({
+    queryKey: ["admin-sales-report"],
+    queryFn: () => fetchAdminSalesReport({ limit: 8 })
+  });
 
   const refreshQueries = () => {
     queryClient.invalidateQueries({ queryKey: ["admin-movies"] });
@@ -92,6 +97,7 @@ export function AdminDashboardPage() {
     queryClient.invalidateQueries({ queryKey: ["theaters"] });
     queryClient.invalidateQueries({ queryKey: ["admin-showtimes"] });
     queryClient.invalidateQueries({ queryKey: ["showtimes"] });
+    queryClient.invalidateQueries({ queryKey: ["admin-sales-report"] });
   };
 
   const createMovieMutation = useMutation({
@@ -188,6 +194,43 @@ export function AdminDashboardPage() {
       </div>
 
       {feedback && <p className="status">{feedback}</p>}
+
+      <article className="admin-card">
+        <h3>Sales snapshot</h3>
+        {salesReportQuery.isLoading && <p className="status">Loading sales metrics...</p>}
+        {salesReportQuery.isError && <p className="status error">Could not load sales metrics.</p>}
+        {!salesReportQuery.isLoading && !salesReportQuery.isError && (
+          <>
+            <div className="inline-fields">
+              <p className="status">Paid orders: {salesReportQuery.data.paid_orders}</p>
+              <p className="status">
+                Revenue: ${(salesReportQuery.data.gross_revenue_cents / 100).toFixed(2)}
+              </p>
+            </div>
+            <div className="inline-fields">
+              <p className="status">Tickets sold: {salesReportQuery.data.tickets_sold}</p>
+              <p className="status">Active holds: {salesReportQuery.data.active_holds}</p>
+            </div>
+            {salesReportQuery.data.showtimes.length > 0 && (
+              <ul className="admin-list">
+                {salesReportQuery.data.showtimes.map((item) => (
+                  <li key={item.showtime_id}>
+                    <div className="admin-list-main">
+                      <span>
+                        #{item.showtime_id} {item.movie_title}
+                      </span>
+                      <span>{item.occupancy_percent.toFixed(2)}% occupied</span>
+                    </div>
+                    <p className="status">
+                      {item.theater_name} • {item.sold_seats}/{item.capacity} sold
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
+        )}
+      </article>
 
       <div className="admin-grid">
         <article className="admin-card">

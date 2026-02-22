@@ -24,7 +24,7 @@ Base URL: `http://localhost:8000/api`
 - `POST /reservations` (creates transactional seat hold with expiry)
 - `GET /reservations/{reservation_id}`
 - `DELETE /reservations/{reservation_id}` (release hold early)
-- `POST /tickets/scan`
+- `POST /tickets/scan` (requires `x-staff-token`)
 
 ## Checkout + Payments
 
@@ -35,6 +35,15 @@ Base URL: `http://localhost:8000/api`
 - `POST /webhooks/stripe`
   - Idempotent webhook consumer for `checkout.session.completed`
   - Requires `x-webhook-secret` header
+
+## User Portal
+
+- `GET /me/tickets`
+- `GET /me/orders`
+
+## Admin Reports
+
+- `GET /admin/reports/sales`
 
 ## Admin Catalog CRUD
 

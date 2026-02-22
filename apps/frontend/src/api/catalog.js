@@ -1,6 +1,6 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
 
-async function request(path, { params = {}, method = "GET", body } = {}) {
+async function request(path, { params = {}, method = "GET", body, headers = {} } = {}) {
   const url = new URL(`${API_BASE_URL}${path}`);
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== "") {
@@ -10,7 +10,10 @@ async function request(path, { params = {}, method = "GET", body } = {}) {
 
   const response = await fetch(url.toString(), {
     method,
-    headers: body ? { "Content-Type": "application/json" } : undefined,
+    headers: {
+      ...(body ? { "Content-Type": "application/json" } : {}),
+      ...headers
+    },
     body: body ? JSON.stringify(body) : undefined
   });
   if (!response.ok) {
@@ -69,6 +72,26 @@ export function createCheckoutSession(payload) {
 
 export function confirmDemoCheckout(payload) {
   return request("/checkout/demo/confirm", { method: "POST", body: payload });
+}
+
+export function fetchMyTickets() {
+  return request("/me/tickets");
+}
+
+export function fetchMyOrders() {
+  return request("/me/orders");
+}
+
+export function scanTicket(payload, { staffToken } = {}) {
+  return request("/tickets/scan", {
+    method: "POST",
+    body: payload,
+    headers: staffToken ? { "x-staff-token": staffToken } : {}
+  });
+}
+
+export function fetchAdminSalesReport({ limit = 10 } = {}) {
+  return request("/admin/reports/sales", { params: { limit } });
 }
 
 export function fetchTheaters({ city = "", limit = 100, offset = 0 } = {}) {
