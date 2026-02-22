@@ -1,0 +1,72 @@
+from datetime import datetime
+
+from pydantic import BaseModel, Field
+
+
+class TicketScanRequest(BaseModel):
+    qr_token: str = Field(min_length=1, max_length=255)
+
+
+class TicketScanResponse(BaseModel):
+    result: str
+    ticket_id: int | None = None
+    order_id: int | None = None
+    showtime_id: int | None = None
+    seat_code: str | None = None
+    used_at: datetime | None = None
+    message: str
+
+
+class MyTicketItem(BaseModel):
+    ticket_id: int
+    order_id: int
+    qr_token: str
+    ticket_status: str
+    seat_code: str
+    seat_type: str
+    movie_title: str
+    theater_name: str
+    showtime_id: int
+    showtime_starts_at: datetime
+    used_at: datetime | None
+    created_at: datetime
+
+
+class MyTicketListResponse(BaseModel):
+    items: list[MyTicketItem]
+    total: int
+
+
+class MyOrderItem(BaseModel):
+    order_id: int
+    reservation_id: int
+    showtime_id: int
+    status: str
+    total_cents: int
+    currency: str
+    provider: str
+    ticket_count: int
+    created_at: datetime
+
+
+class MyOrderListResponse(BaseModel):
+    items: list[MyOrderItem]
+    total: int
+
+
+class AdminShowtimeSalesItem(BaseModel):
+    showtime_id: int
+    movie_title: str
+    theater_name: str
+    starts_at: datetime
+    sold_seats: int
+    capacity: int
+    occupancy_percent: float
+
+
+class AdminSalesReportResponse(BaseModel):
+    paid_orders: int
+    gross_revenue_cents: int
+    tickets_sold: int
+    active_holds: int
+    showtimes: list[AdminShowtimeSalesItem]

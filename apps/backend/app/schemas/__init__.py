@@ -22,6 +22,16 @@ from app.schemas.payment import (
     StripeWebhookEvent,
     TicketRead,
 )
+from app.schemas.portal import (
+    AdminSalesReportResponse,
+    AdminShowtimeSalesItem,
+    MyOrderItem,
+    MyOrderListResponse,
+    MyTicketItem,
+    MyTicketListResponse,
+    TicketScanRequest,
+    TicketScanResponse,
+)
 from app.schemas.reservation import ReservationCreate, ReservationRead
 
 __all__ = [
@@ -34,6 +44,12 @@ __all__ = [
     "CheckoutFinalizeRead",
     "CheckoutSessionCreate",
     "CheckoutSessionRead",
+    "AdminSalesReportResponse",
+    "AdminShowtimeSalesItem",
+    "MyOrderItem",
+    "MyOrderListResponse",
+    "MyTicketItem",
+    "MyTicketListResponse",
     "ReservationCreate",
     "ReservationRead",
     "ShowtimeCreate",
@@ -46,5 +62,7 @@ __all__ = [
     "TheaterListResponse",
     "TheaterRead",
     "TheaterUpdate",
+    "TicketScanRequest",
+    "TicketScanResponse",
     "TicketRead",
 ]
