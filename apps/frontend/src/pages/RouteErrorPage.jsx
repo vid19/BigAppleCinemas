@@ -18,13 +18,6 @@ export function RouteErrorPage() {
   }
 
   return (
-    <section>
-      <h2>{title}</h2>
-      <p>{detail}</p>
-      <p>
-        Return to <Link to="/">Home</Link>.
-      </p>
-  return (
     <section className="page">
       <h2>{title}</h2>
       <p className="status error">{detail}</p>

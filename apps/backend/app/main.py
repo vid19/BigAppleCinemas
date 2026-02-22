@@ -7,6 +7,7 @@ from app.api.router import api_router
 from app.core.config import settings
 from app.db.bootstrap import bootstrap_local_data
 
+
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     if settings.environment == "local" and settings.bootstrap_demo_data:
