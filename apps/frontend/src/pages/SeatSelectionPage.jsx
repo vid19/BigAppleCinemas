@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 
 import {
   cancelReservation,
+  fetchActiveReservation,
   createCheckoutSession,
   createReservation,
   fetchShowtimeSeats
@@ -38,6 +39,14 @@ export function SeatSelectionPage() {
     refetchInterval: 4000
   });
   const { refetch } = seatsQuery;
+  const activeReservationQuery = useQuery({
+    queryKey: ["reservation-active", parsedShowtimeId],
+    queryFn: () => fetchActiveReservation(parsedShowtimeId),
+    enabled: Number.isFinite(parsedShowtimeId),
+    refetchInterval: 4000,
+    retry: false
+  });
+  const refetchActiveReservation = activeReservationQuery.refetch;
 
   const createReservationMutation = useMutation({
     mutationFn: createReservation,
@@ -46,6 +55,7 @@ export function SeatSelectionPage() {
       setSelectedSeatIds(payload.seat_ids ?? []);
       setFeedback("Seats are held. Complete checkout before the timer expires.");
       refetch();
+      refetchActiveReservation();
     },
     onError: (error) => {
       setFeedback(error.message);
@@ -60,6 +70,7 @@ export function SeatSelectionPage() {
       setReservation(null);
       setSelectedSeatIds([]);
       refetch();
+      refetchActiveReservation();
     },
     onError: (error) => setFeedback(error.message)
   });
@@ -104,6 +115,28 @@ export function SeatSelectionPage() {
   }, [activeHold, nowMs, reservation?.expires_at]);
 
   useEffect(() => {
+    const activeReservation = activeReservationQuery.data;
+    if (!activeReservation || activeReservation.status !== "ACTIVE") {
+      return;
+    }
+    setReservation((previous) => {
+      if (
+        previous &&
+        previous.id === activeReservation.id &&
+        previous.status === activeReservation.status &&
+        previous.expires_at === activeReservation.expires_at
+      ) {
+        return previous;
+      }
+      return activeReservation;
+    });
+    setSelectedSeatIds(activeReservation.seat_ids ?? []);
+    setFeedback((current) =>
+      current || "Resumed your active hold. Complete checkout before the timer expires."
+    );
+  }, [activeReservationQuery.data]);
+
+  useEffect(() => {
     if (!activeHold) {
       return undefined;
     }
@@ -119,8 +152,9 @@ export function SeatSelectionPage() {
       setFeedback("Your hold expired. Select seats again.");
       setSelectedSeatIds([]);
       refetch();
+      refetchActiveReservation();
     }
-  }, [activeHold, remainingSeconds, refetch]);
+  }, [activeHold, remainingSeconds, refetch, refetchActiveReservation]);
 
   if (!Number.isFinite(parsedShowtimeId)) {
     return <p className="status error">Invalid showtime URL.</p>;

@@ -8,6 +8,7 @@ import {
   createReservation,
   deleteMovie,
   fetchAdminSalesReport,
+  fetchActiveReservation,
   fetchMyOrders,
   fetchMyTickets,
   fetchMovies,
@@ -131,6 +132,21 @@ describe("catalog api client", () => {
     const [cancelUrl, cancelOptions] = fetchMock.mock.calls[1];
     expect(cancelUrl).toContain("/api/reservations/22");
     expect(cancelOptions.method).toBe("DELETE");
+  });
+
+  it("fetches active reservation for a showtime", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ id: 31, status: "ACTIVE", showtime_id: 8, seat_ids: [3] })
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await fetchActiveReservation(8);
+
+    expect(result.id).toBe(31);
+    expect(fetchMock.mock.calls[0][0]).toContain("/api/reservations/active");
+    expect(fetchMock.mock.calls[0][0]).toContain("showtime_id=8");
   });
 
   it("creates checkout session and confirms demo payment", async () => {

@@ -1,6 +1,6 @@
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import Base
@@ -44,6 +44,24 @@ async def _ensure_upcoming_showtimes(
                 status="SCHEDULED",
             )
         )
+
+
+async def _normalize_legacy_movies(session: AsyncSession) -> None:
+    """Clean up older demo records so catalog data stays recruiter-ready."""
+    legacy_movies = (
+        await session.execute(select(Movie).where(func.lower(Movie.title) == "leo"))
+    ).scalars().all()
+    for movie in legacy_movies:
+        movie.title = "Empire Echo"
+        movie.description = (
+            "A high-stakes thriller where a missing soundtrack reveals a citywide conspiracy."
+        )
+        movie.rating = "PG-13"
+        movie.runtime_minutes = 118
+        movie.poster_url = (
+            "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c"
+        )
+        movie.metadata_json = {"genre": ["Thriller", "Mystery"]}
 
 
 async def bootstrap_local_data() -> None:
@@ -118,6 +136,7 @@ async def bootstrap_local_data() -> None:
         movies = (
             await session.execute(select(Movie).order_by(Movie.id.asc()))
         ).scalars().all()
+        await _normalize_legacy_movies(session)
         await _ensure_upcoming_showtimes(
             session,
             auditorium_id=auditorium.id,

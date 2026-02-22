@@ -66,3 +66,28 @@ def test_reservation_blocks_double_hold(client: TestClient) -> None:
 
     cleanup_response = client.delete(f"/api/reservations/{reservation_id}")
     assert cleanup_response.status_code == 204
+
+
+def test_active_reservation_endpoint_returns_current_hold(client: TestClient) -> None:
+    showtime_id, seat_id = _first_available_seat(client)
+
+    empty_response = client.get("/api/reservations/active", params={"showtime_id": showtime_id})
+    assert empty_response.status_code == 200
+    assert empty_response.json() is None
+
+    create_response = client.post(
+        "/api/reservations",
+        json={"showtime_id": showtime_id, "seat_ids": [seat_id]},
+    )
+    assert create_response.status_code == 201
+    reservation_id = create_response.json()["id"]
+
+    active_response = client.get("/api/reservations/active", params={"showtime_id": showtime_id})
+    assert active_response.status_code == 200
+    payload = active_response.json()
+    assert payload["id"] == reservation_id
+    assert payload["status"] == "ACTIVE"
+    assert payload["seat_ids"] == [seat_id]
+
+    cleanup_response = client.delete(f"/api/reservations/{reservation_id}")
+    assert cleanup_response.status_code == 204

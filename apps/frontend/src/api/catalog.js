@@ -69,6 +69,12 @@ export function fetchReservation(reservationId) {
   return request(`/reservations/${reservationId}`);
 }
 
+export function fetchActiveReservation(showtimeId) {
+  return request("/reservations/active", {
+    params: { showtime_id: showtimeId }
+  });
+}
+
 export function cancelReservation(reservationId) {
   return request(`/reservations/${reservationId}`, { method: "DELETE" });
 }
