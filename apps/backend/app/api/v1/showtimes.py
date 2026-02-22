@@ -50,7 +50,8 @@ async def list_showtimes(
     if theater_id is not None:
         filters.append(Theater.id == theater_id)
     if show_date is not None:
-        filters.append(func.date(Showtime.starts_at) == show_date)
+        local_showtime_date = func.date(func.timezone(Theater.timezone, Showtime.starts_at))
+        filters.append(local_showtime_date == show_date)
     if not include_past:
         filters.append(Showtime.starts_at >= now_utc)
 

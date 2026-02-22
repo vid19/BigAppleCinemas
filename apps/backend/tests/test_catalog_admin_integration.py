@@ -191,6 +191,56 @@ def test_showtimes_hide_past_by_default(client: TestClient) -> None:
     assert client.delete(f"/api/admin/movies/{movie_id}").status_code == 204
 
 
+def test_showtime_date_filter_uses_theater_local_date(client: TestClient) -> None:
+    create_movie_response = client.post(
+        "/api/admin/movies",
+        json={
+            "title": "Local Date Filter Movie",
+            "description": "Verifies showtime date filtering is theater-local.",
+            "runtime_minutes": 101,
+            "rating": "PG-13",
+        },
+    )
+    assert create_movie_response.status_code == 201
+    movie_id = create_movie_response.json()["id"]
+
+    auditoriums_response = client.get("/api/admin/auditoriums", params={"limit": 1, "offset": 0})
+    assert auditoriums_response.status_code == 200
+    auditorium_id = auditoriums_response.json()["items"][0]["id"]
+
+    create_showtime_response = client.post(
+        "/api/admin/showtimes",
+        json={
+            "movie_id": movie_id,
+            "auditorium_id": auditorium_id,
+            "starts_at": "2030-02-23T02:00:00+00:00",  # Feb 22, 9:00 PM in America/New_York
+            "ends_at": "2030-02-23T04:00:00+00:00",
+            "status": "SCHEDULED",
+        },
+    )
+    assert create_showtime_response.status_code == 201
+    showtime_id = create_showtime_response.json()["id"]
+
+    local_date_response = client.get(
+        "/api/showtimes",
+        params={"movie_id": movie_id, "date": "2030-02-22", "limit": 10, "offset": 0},
+    )
+    assert local_date_response.status_code == 200
+    local_date_ids = {item["id"] for item in local_date_response.json()["items"]}
+    assert showtime_id in local_date_ids
+
+    utc_date_response = client.get(
+        "/api/showtimes",
+        params={"movie_id": movie_id, "date": "2030-02-23", "limit": 10, "offset": 0},
+    )
+    assert utc_date_response.status_code == 200
+    utc_date_ids = {item["id"] for item in utc_date_response.json()["items"]}
+    assert showtime_id not in utc_date_ids
+
+    assert client.delete(f"/api/admin/showtimes/{showtime_id}").status_code == 204
+    assert client.delete(f"/api/admin/movies/{movie_id}").status_code == 204
+
+
 def test_movie_delete_cascades_unbooked_showtimes(client: TestClient) -> None:
     create_movie_response = client.post(
         "/api/admin/movies",
