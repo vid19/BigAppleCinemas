@@ -35,13 +35,16 @@ def create_rate_limiter(
 ) -> Callable[..., Awaitable[None]]:
     async def dependency(
         request: Request,
-        x_user_id: int | None = Header(default=None),
+        authorization: str | None = Header(default=None),
+        x_forwarded_for: str | None = Header(default=None),
     ) -> None:
-        identity = (
-            f"user:{x_user_id}"
-            if x_user_id is not None
-            else f"ip:{request.client.host if request.client else 'unknown'}"
-        )
+        if authorization:
+            identity = f"auth:{authorization}"
+        elif x_forwarded_for:
+            forwarded_ip = x_forwarded_for.split(",")[0].strip()
+            identity = f"ip:{forwarded_ip or 'unknown'}"
+        else:
+            identity = f"ip:{request.client.host if request.client else 'unknown'}"
         resolved_max_requests = max_requests() if callable(max_requests) else max_requests
         resolved_window_seconds = window_seconds() if callable(window_seconds) else window_seconds
         rate_key = f"ratelimit:{key_prefix}:{identity}"

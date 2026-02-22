@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.v1.reservations import get_current_user_id
+from app.api.deps import get_current_user_id
 from app.db.session import get_db_session
 from app.models.movie import Movie
 from app.models.order import Order, Ticket

@@ -40,6 +40,11 @@ Services:
 - Backend API: `http://localhost:8000`
 - Health: `http://localhost:8000/health`
 
+Demo admin login (local bootstrap):
+
+- Email: `demo@bigapplecinemas.local`
+- Password: `DemoAdmin123!`
+
 ## Git Workflow (Strict)
 
 - Milestone baseline commit lands on `main`.

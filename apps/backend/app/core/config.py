@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     redis_url: str
     jwt_secret: str
     jwt_algorithm: str = "HS256"
+    jwt_access_token_minutes: int = 240
     reservation_hold_minutes: int = 8
     bootstrap_demo_data: bool = True
     cors_allow_origins: str = "http://localhost:5173,http://127.0.0.1:5173"

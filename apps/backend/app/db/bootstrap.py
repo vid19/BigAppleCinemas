@@ -3,6 +3,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.security import hash_password, verify_password
 from app.db.base import Base
 from app.db.session import AsyncSessionLocal, engine
 from app.models.movie import Movie
@@ -12,6 +13,9 @@ from app.services.seat_inventory import (
     ensure_auditorium_seat_inventory,
     sync_showtime_seat_statuses,
 )
+
+DEMO_ADMIN_EMAIL = "demo@bigapplecinemas.local"
+DEMO_ADMIN_PASSWORD = "DemoAdmin123!"
 
 
 async def _ensure_upcoming_showtimes(
@@ -143,15 +147,25 @@ async def bootstrap_local_data() -> None:
             movies=movies,
         )
 
-        demo_user_exists = (await session.execute(select(User.id).limit(1))).scalar_one_or_none()
-        if demo_user_exists is None:
+        demo_user = (
+            await session.execute(select(User).where(User.email == DEMO_ADMIN_EMAIL))
+        ).scalar_one_or_none()
+        if demo_user is None:
             session.add(
                 User(
-                    email="demo@bigapplecinemas.local",
-                    password_hash="demo-bootstrap-password",
+                    email=DEMO_ADMIN_EMAIL,
+                    password_hash=hash_password(DEMO_ADMIN_PASSWORD),
                     role="ADMIN",
                 )
             )
+        else:
+            demo_user.role = "ADMIN"
+            try:
+                password_matches = verify_password(DEMO_ADMIN_PASSWORD, demo_user.password_hash)
+            except Exception:
+                password_matches = False
+            if not password_matches:
+                demo_user.password_hash = hash_password(DEMO_ADMIN_PASSWORD)
 
         all_auditoriums = (await session.execute(select(Auditorium))).scalars().all()
         for item in all_auditoriums:

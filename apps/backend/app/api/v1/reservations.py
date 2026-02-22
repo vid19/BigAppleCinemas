@@ -1,12 +1,12 @@
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import get_current_user_id
 from app.core.config import settings
 from app.core.rate_limit import create_rate_limiter
 from app.db.session import get_db_session
 from app.models.reservation import Reservation, ReservationSeat
-from app.models.user import User
 from app.schemas.reservation import ReservationCreate, ReservationRead
 from app.services.reservation_service import ReservationService
 
@@ -17,12 +17,6 @@ reservation_create_rate_limiter = create_rate_limiter(
     max_requests=lambda: settings.rate_limit_reservations_create,
     window_seconds=lambda: settings.rate_limit_reservations_window_seconds,
 )
-
-
-def get_current_user_id(x_user_id: int | None = Header(default=None)) -> int:
-    if x_user_id is not None and x_user_id < 1:
-        raise HTTPException(status_code=400, detail="x-user-id must be greater than zero")
-    return x_user_id or 1
 
 
 async def _get_reservation_read(
@@ -68,12 +62,6 @@ async def create_reservation(
     user_id: int = Depends(get_current_user_id),
 ) -> ReservationRead:
     async with session.begin():
-        user_exists = (
-            await session.execute(select(User.id).where(User.id == user_id))
-        ).scalar_one_or_none()
-        if user_exists is None:
-            raise HTTPException(status_code=404, detail="User not found")
-
         reservation = await reservation_service.create_hold(
             session,
             user_id=user_id,

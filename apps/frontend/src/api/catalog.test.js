@@ -7,6 +7,7 @@ import {
   createMovie,
   createReservation,
   deleteMovie,
+  fetchAuthMe,
   fetchAdminSalesReport,
   fetchActiveReservation,
   fetchMyOrders,
@@ -14,10 +15,14 @@ import {
   fetchMovies,
   fetchShowtimes,
   fetchShowtimeSeats,
+  loginUser,
+  registerUser,
+  setAccessToken,
   scanTicket
 } from "./catalog";
 
 afterEach(() => {
+  setAccessToken(null);
   vi.restoreAllMocks();
 });
 
@@ -219,5 +224,49 @@ describe("catalog api client", () => {
 
     const [, options] = fetchMock.mock.calls[0];
     expect(options.headers["x-staff-token"]).toBe("local-staff");
+  });
+
+  it("auth endpoints are callable", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        json: async () => ({ access_token: "token", user: { id: 1 } })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ access_token: "token", user: { id: 1 } })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: 1, email: "demo@bigapplecinemas.local", role: "ADMIN" })
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await registerUser({ email: "demo@bigapplecinemas.local", password: "Password123!" });
+    await loginUser({ email: "demo@bigapplecinemas.local", password: "Password123!" });
+    await fetchAuthMe();
+
+    expect(fetchMock.mock.calls[0][0]).toContain("/api/auth/register");
+    expect(fetchMock.mock.calls[1][0]).toContain("/api/auth/login");
+    expect(fetchMock.mock.calls[2][0]).toContain("/api/auth/me");
+  });
+
+  it("adds authorization header when token is set", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ items: [], total: 0 })
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    setAccessToken("token-123");
+
+    await fetchMyTickets();
+
+    const [, options] = fetchMock.mock.calls[0];
+    expect(options.headers.Authorization).toBe("Bearer token-123");
   });
 });

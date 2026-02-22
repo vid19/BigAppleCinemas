@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import AuthenticatedUser, require_admin_user
 from app.core.config import settings
 from app.core.rate_limit import create_rate_limiter
 from app.db.session import get_db_session
@@ -24,6 +25,7 @@ async def scan_ticket(
     payload: TicketScanRequest,
     session: AsyncSession = Depends(get_db_session),
     _: None = Depends(ticket_scan_rate_limiter),
+    __: AuthenticatedUser = Depends(require_admin_user),
     staff_token: str | None = Header(default=None, alias="x-staff-token"),
 ) -> TicketScanResponse:
     if staff_token != settings.staff_scan_token:

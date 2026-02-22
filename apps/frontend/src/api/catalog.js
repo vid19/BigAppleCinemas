@@ -1,4 +1,14 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+export const AUTH_TOKEN_STORAGE_KEY = "bigapplecinemas.authToken";
+let accessToken = null;
+
+export function setAccessToken(token) {
+  accessToken = token || null;
+}
+
+export function getAccessToken() {
+  return accessToken;
+}
 
 async function request(path, { params = {}, method = "GET", body, headers = {} } = {}) {
   const url = new URL(`${API_BASE_URL}${path}`);
@@ -12,6 +22,7 @@ async function request(path, { params = {}, method = "GET", body, headers = {} }
     method,
     headers: {
       ...(body ? { "Content-Type": "application/json" } : {}),
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...headers
     },
     body: body ? JSON.stringify(body) : undefined
@@ -26,7 +37,9 @@ async function request(path, { params = {}, method = "GET", body, headers = {} }
     } catch {
       // no-op
     }
-    throw new Error(`Request failed with status ${response.status}${detail}`);
+    const error = new Error(`Request failed with status ${response.status}${detail}`);
+    error.status = response.status;
+    throw error;
   }
 
   if (response.status === 204) {
@@ -38,6 +51,18 @@ async function request(path, { params = {}, method = "GET", body, headers = {} }
 
 export function fetchMovies({ q = "", limit = 12, offset = 0 } = {}) {
   return request("/movies", { params: { q, limit, offset } });
+}
+
+export function registerUser(payload) {
+  return request("/auth/register", { method: "POST", body: payload });
+}
+
+export function loginUser(payload) {
+  return request("/auth/login", { method: "POST", body: payload });
+}
+
+export function fetchAuthMe() {
+  return request("/auth/me");
 }
 
 export function fetchMovie(movieId) {
