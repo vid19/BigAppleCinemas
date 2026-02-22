@@ -51,7 +51,11 @@ class Showtime(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     movie_id: Mapped[int] = mapped_column(ForeignKey("movies.id"), nullable=False, index=True)
-    auditorium_id: Mapped[int] = mapped_column(ForeignKey("auditoriums.id"), nullable=False, index=True)
+    auditorium_id: Mapped[int] = mapped_column(
+        ForeignKey("auditoriums.id"),
+        nullable=False,
+        index=True,
+    )
     starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     status: Mapped[str] = mapped_column(String(30), default="SCHEDULED", nullable=False)
