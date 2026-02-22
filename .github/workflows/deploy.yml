@@ -1,11 +1,60 @@
 name: Deploy
 
 on:
+  push:
+    branches: ["main"]
   workflow_dispatch:
+    inputs:
+      target:
+        description: "Deployment target environment"
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+        default: staging
 
 jobs:
-  deploy:
+  deploy-staging:
+    if: |
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && inputs.target == 'staging')
+    environment: staging
     runs-on: ubuntu-latest
     steps:
-      - name: Placeholder deploy workflow
-        run: echo "Configure Fly.io/Render deployment in later milestone"
+      - uses: actions/checkout@v4
+      - name: Deploy gating check (staging)
+        run: |
+          if [ -z "${{ secrets.STAGING_MIGRATION_COMMAND }}" ] || \
+             [ -z "${{ secrets.STAGING_BACKEND_DEPLOY_COMMAND }}" ] || \
+             [ -z "${{ secrets.STAGING_FRONTEND_DEPLOY_COMMAND }}" ]; then
+            echo "Staging deploy secrets are not configured; skipping deploy."
+            exit 0
+          fi
+      - name: Run staging migrations
+        run: ${{ secrets.STAGING_MIGRATION_COMMAND }}
+      - name: Deploy staging backend
+        run: ${{ secrets.STAGING_BACKEND_DEPLOY_COMMAND }}
+      - name: Deploy staging frontend
+        run: ${{ secrets.STAGING_FRONTEND_DEPLOY_COMMAND }}
+
+  deploy-production:
+    if: github.event_name == 'workflow_dispatch' && inputs.target == 'production'
+    environment: production
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy gating check (production)
+        run: |
+          if [ -z "${{ secrets.PROD_MIGRATION_COMMAND }}" ] || \
+             [ -z "${{ secrets.PROD_BACKEND_DEPLOY_COMMAND }}" ] || \
+             [ -z "${{ secrets.PROD_FRONTEND_DEPLOY_COMMAND }}" ]; then
+            echo "Production deploy secrets are not configured; skipping deploy."
+            exit 0
+          fi
+      - name: Run production migrations
+        run: ${{ secrets.PROD_MIGRATION_COMMAND }}
+      - name: Deploy production backend
+        run: ${{ secrets.PROD_BACKEND_DEPLOY_COMMAND }}
+      - name: Deploy production frontend
+        run: ${{ secrets.PROD_FRONTEND_DEPLOY_COMMAND }}

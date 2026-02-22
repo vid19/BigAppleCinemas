@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user_id
 from app.core.config import settings
+from app.core.metrics import increment_metric
 from app.core.rate_limit import create_rate_limiter
 from app.db.session import get_db_session
 from app.models.reservation import Reservation, ReservationSeat
@@ -61,15 +62,22 @@ async def create_reservation(
     _: None = Depends(reservation_create_rate_limiter),
     user_id: int = Depends(get_current_user_id),
 ) -> ReservationRead:
+    increment_metric("reservation_attempt_total")
     async with session.begin():
-        reservation = await reservation_service.create_hold(
-            session,
-            user_id=user_id,
-            showtime_id=payload.showtime_id,
-            seat_ids=payload.seat_ids,
-            hold_minutes=settings.reservation_hold_minutes,
-        )
+        try:
+            reservation = await reservation_service.create_hold(
+                session,
+                user_id=user_id,
+                showtime_id=payload.showtime_id,
+                seat_ids=payload.seat_ids,
+                hold_minutes=settings.reservation_hold_minutes,
+            )
+        except HTTPException as exc:
+            if exc.status_code == status.HTTP_409_CONFLICT:
+                increment_metric("reservation_conflict_total")
+            raise
         reservation_read = await _get_reservation_read(session, reservation.id, user_id)
+    increment_metric("reservation_success_total")
     return reservation_read
 
 

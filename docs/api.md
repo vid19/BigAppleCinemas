@@ -48,6 +48,8 @@ Base URL: `http://localhost:8000/api`
 - `GET /me/orders`
 - `GET /me/recommendations`
   - All require bearer token
+  - Ranking blends personalized similarity + popularity + freshness + diversity
+  - Response includes explainability text in `reason`
 
 ## Admin Reports
 
@@ -79,3 +81,4 @@ Base URL: `http://localhost:8000/api`
 ## Health
 
 - `GET /health` (outside `/api`)
+- `GET /metrics` (outside `/api`, Prometheus-format counters)

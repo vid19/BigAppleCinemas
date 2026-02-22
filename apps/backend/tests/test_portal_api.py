@@ -93,7 +93,10 @@ def test_me_recommendations_endpoint_returns_ranked_movies(client: TestClient) -
     assert "reason" in first_item
     assert isinstance(first_item["score"], float)
     assert first_item["title"] not in watched_movies
-
+    assert any(
+        item["reason"].startswith("Because you watched") or item["reason"].startswith("Trending")
+        for item in payload["items"]
+    )
 
 def test_admin_sales_report_endpoint(client: TestClient) -> None:
     response = client.get("/api/admin/reports/sales", params={"limit": 5})

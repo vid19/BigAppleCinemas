@@ -20,6 +20,7 @@ Production-grade movie ticketing platform built with FastAPI + React.
 - `infra/`: infra stubs for NGINX/Prometheus/Grafana
 - `docs/`: architecture, concurrency, payments, deployment notes
 - `docs/api.md`: current API endpoint reference
+- `docs/environment.md`: runtime environment variables and deploy secrets checklist
 - `docs/ux-design-brief.md`: UX strategy and deliverables for upcoming development
 - `docs/phase-2-plan.md`: scheduled Phase 2 execution plan and git checkpoints
 - `docs/phase-3-plan.md`: seat map + showtime seat inventory implementation schedule
@@ -39,6 +40,8 @@ Services:
 - Frontend: `http://localhost:5173`
 - Backend API: `http://localhost:8000`
 - Health: `http://localhost:8000/health`
+- Metrics: `http://localhost:8000/metrics`
+- Celery beat runs reservation expiry and daily recommendation similarity rebuild jobs
 
 Demo admin login (local bootstrap):
 

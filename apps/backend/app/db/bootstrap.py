@@ -3,12 +3,14 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.security import hash_password, verify_password
 from app.db.base import Base
 from app.db.session import AsyncSessionLocal, engine
 from app.models.movie import Movie
 from app.models.showtime import Auditorium, Showtime, Theater
 from app.models.user import User
+from app.services.movie_similarity_service import rebuild_movie_similarity
 from app.services.seat_inventory import (
     ensure_auditorium_seat_inventory,
     sync_showtime_seat_statuses,
@@ -174,5 +176,10 @@ async def bootstrap_local_data() -> None:
         all_showtimes = (await session.execute(select(Showtime))).scalars().all()
         for showtime in all_showtimes:
             await sync_showtime_seat_statuses(session, showtime)
+
+        await rebuild_movie_similarity(
+            session,
+            top_k=settings.recommendation_similarity_top_k,
+        )
 
         await session.commit()
