@@ -84,3 +84,21 @@ Implement catalog experience end-to-end for movies, theaters, and showtimes with
 - PostgreSQL + Redis available in local and CI environments.
 - Seed data script exists and can load demo catalog quickly.
 - Design decisions from `docs/ux-design-brief.md` are followed for visual consistency.
+
+## Progress Update (2026-02-22)
+
+Completed:
+
+- Catalog read APIs with filtering/pagination (`/movies`, `/movies/{id}`, `/theaters`, `/showtimes`).
+- Local bootstrap for tables + demo catalog seed data.
+- Frontend movie discovery flow with movie detail and theater/date showtime filters.
+- Admin backend CRUD for movies/theaters/showtimes.
+- Admin frontend dashboard for create/delete operations.
+- Redis cache for catalog reads + cache invalidation on admin writes.
+- Backend integration API tests and frontend API client unit tests.
+
+Remaining in Phase 2:
+
+- Add frontend UI coverage for update/edit admin actions.
+- Expand frontend component-level tests beyond API client layer.
+- Add API usage screenshots and concise performance notes to docs.

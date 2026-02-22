@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.cache import get_cache_json, set_cache_json
 from app.db.session import get_db_session
 from app.models.showtime import Theater
 from app.schemas.catalog import TheaterListResponse
@@ -16,9 +17,15 @@ async def list_theaters(
     offset: int = Query(default=0, ge=0),
     session: AsyncSession = Depends(get_db_session),
 ) -> TheaterListResponse:
+    city_filter = city.strip() if city else ""
+    cache_key = f"catalog:theaters:city={city_filter.lower()}:limit={limit}:offset={offset}"
+    cached = await get_cache_json(cache_key)
+    if cached is not None:
+        return TheaterListResponse.model_validate(cached)
+
     filters = []
-    if city:
-        filters.append(Theater.city.ilike(f"%{city.strip()}%"))
+    if city_filter:
+        filters.append(Theater.city.ilike(f"%{city_filter}%"))
 
     total_stmt = select(func.count(Theater.id))
     if filters:
@@ -34,4 +41,6 @@ async def list_theaters(
     )
     rows = (await session.execute(stmt)).scalars().all()
 
-    return TheaterListResponse(items=rows, total=total, limit=limit, offset=offset)
+    response = TheaterListResponse(items=rows, total=total, limit=limit, offset=offset)
+    await set_cache_json(cache_key, response.model_dump(mode="json"))
+    return response

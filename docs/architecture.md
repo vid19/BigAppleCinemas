@@ -13,3 +13,9 @@
 - `apps/backend/app/services`: transactional business logic.
 - `apps/backend/app/models`: persistence model.
 - `apps/frontend/src/pages`: user and admin surfaces.
+
+## Catalog Caching
+
+- Read-heavy catalog endpoints (`/movies`, `/movies/{id}`, `/theaters`, `/showtimes`) are cached in Redis.
+- Cache keys use the `catalog:*` prefix and include query parameters for deterministic lookups.
+- Admin catalog writes invalidate `catalog:*` key groups to keep read responses fresh.

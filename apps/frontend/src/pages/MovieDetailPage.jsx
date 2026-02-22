@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
-import { fetchMovie, fetchShowtimes } from "../api/catalog";
+import { fetchMovie, fetchShowtimes, fetchTheaters } from "../api/catalog";
 
 function formatDate(dateValue) {
   if (!dateValue) {
@@ -27,16 +27,18 @@ function todayDateInput() {
 export function MovieDetailPage() {
   const { movieId } = useParams();
   const [selectedDate, setSelectedDate] = useState(todayDateInput);
+  const [selectedTheaterId, setSelectedTheaterId] = useState("");
 
   const parsedMovieId = Number(movieId);
   const showtimeQueryParams = useMemo(
     () => ({
       movieId: parsedMovieId,
+      theaterId: selectedTheaterId ? Number(selectedTheaterId) : undefined,
       date: selectedDate,
       limit: 50,
       offset: 0
     }),
-    [parsedMovieId, selectedDate]
+    [parsedMovieId, selectedDate, selectedTheaterId]
   );
 
   const movieQuery = useQuery({
@@ -49,6 +51,11 @@ export function MovieDetailPage() {
     queryKey: ["showtimes", showtimeQueryParams],
     queryFn: () => fetchShowtimes(showtimeQueryParams),
     enabled: Number.isFinite(parsedMovieId)
+  });
+
+  const theatersQuery = useQuery({
+    queryKey: ["theaters", { city: "", limit: 100, offset: 0 }],
+    queryFn: () => fetchTheaters({ city: "", limit: 100, offset: 0 })
   });
 
   if (!Number.isFinite(parsedMovieId)) {
@@ -65,6 +72,7 @@ export function MovieDetailPage() {
 
   const movie = movieQuery.data;
   const showtimes = showtimesQuery.data?.items ?? [];
+  const theaters = theatersQuery.data?.items ?? [];
 
   return (
     <section className="page">
@@ -77,20 +85,42 @@ export function MovieDetailPage() {
 
       <p className="movie-description">{movie.description || "Description coming soon."}</p>
 
-      <div className="filter-row">
-        <label htmlFor="show-date">Show date</label>
-        <input
-          id="show-date"
-          type="date"
-          value={selectedDate}
-          onChange={(event) => setSelectedDate(event.target.value)}
-        />
+      <div className="filters-wrap">
+        <div className="filter-row">
+          <label htmlFor="show-date">Show date</label>
+          <input
+            id="show-date"
+            type="date"
+            value={selectedDate}
+            onChange={(event) => setSelectedDate(event.target.value)}
+          />
+        </div>
+        <div className="filter-row">
+          <label htmlFor="show-theater">Theater</label>
+          <select
+            id="show-theater"
+            value={selectedTheaterId}
+            onChange={(event) => setSelectedTheaterId(event.target.value)}
+          >
+            <option value="">All theaters</option>
+            {theaters.map((theater) => (
+              <option key={theater.id} value={theater.id}>
+                {theater.name} ({theater.city})
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {showtimesQuery.isLoading && <p className="status">Loading showtimes...</p>}
       {showtimesQuery.isError && <p className="status error">Could not load showtimes.</p>}
+      {theatersQuery.isError && (
+        <p className="status error">Could not load theaters. Showing all theaters by default.</p>
+      )}
       {!showtimesQuery.isLoading && !showtimesQuery.isError && showtimes.length === 0 && (
-        <p className="status">No showtimes available for the selected date.</p>
+        <p className="status">
+          No showtimes available for the selected filters. Try another date or theater.
+        </p>
       )}
 
       <div className="showtime-list">
@@ -99,6 +129,7 @@ export function MovieDetailPage() {
             <div>
               <h3>{showtime.theater_name}</h3>
               <p>{formatDateTime(showtime.starts_at)}</p>
+              <p className="showtime-status">{showtime.status}</p>
             </div>
             <Link to={`/showtimes/${showtime.id}/seats`}>Select seats</Link>
           </article>

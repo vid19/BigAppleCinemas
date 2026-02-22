@@ -41,9 +41,15 @@ export function fetchMovie(movieId) {
   return request(`/movies/${movieId}`);
 }
 
-export function fetchShowtimes({ movieId, date, limit = 20, offset = 0 } = {}) {
+export function fetchShowtimes({ movieId, theaterId, date, limit = 20, offset = 0 } = {}) {
   return request("/showtimes", {
-    params: { movie_id: movieId, date, limit, offset }
+    params: { movie_id: movieId, theater_id: theaterId, date, limit, offset }
+  });
+}
+
+export function fetchTheaters({ city = "", limit = 100, offset = 0 } = {}) {
+  return request("/theaters", {
+    params: { city, limit, offset }
   });
 }
 
@@ -59,6 +65,14 @@ export function createTheater(payload) {
   return request("/admin/theaters", { method: "POST", body: payload });
 }
 
+export function deleteTheater(theaterId) {
+  return request(`/admin/theaters/${theaterId}`, { method: "DELETE" });
+}
+
 export function createShowtime(payload) {
   return request("/admin/showtimes", { method: "POST", body: payload });
+}
+
+export function deleteShowtime(showtimeId) {
+  return request(`/admin/showtimes/${showtimeId}`, { method: "DELETE" });
 }

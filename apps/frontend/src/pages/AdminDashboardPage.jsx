@@ -6,8 +6,11 @@ import {
   createShowtime,
   createTheater,
   deleteMovie,
+  deleteShowtime,
+  deleteTheater,
   fetchMovies,
-  fetchShowtimes
+  fetchShowtimes,
+  fetchTheaters
 } from "../api/catalog";
 
 function toIsoFromLocalDateTime(value) {
@@ -58,10 +61,16 @@ export function AdminDashboardPage() {
     queryKey: ["admin-showtimes"],
     queryFn: () => fetchShowtimes({ limit: 25, offset: 0 })
   });
+  const theatersQuery = useQuery({
+    queryKey: ["admin-theaters"],
+    queryFn: () => fetchTheaters({ limit: 100, offset: 0 })
+  });
 
   const refreshQueries = () => {
     queryClient.invalidateQueries({ queryKey: ["admin-movies"] });
     queryClient.invalidateQueries({ queryKey: ["movies"] });
+    queryClient.invalidateQueries({ queryKey: ["admin-theaters"] });
+    queryClient.invalidateQueries({ queryKey: ["theaters"] });
     queryClient.invalidateQueries({ queryKey: ["admin-showtimes"] });
     queryClient.invalidateQueries({ queryKey: ["showtimes"] });
   };
@@ -93,6 +102,14 @@ export function AdminDashboardPage() {
     },
     onError: (error) => setFeedback(error.message)
   });
+  const deleteTheaterMutation = useMutation({
+    mutationFn: deleteTheater,
+    onSuccess: () => {
+      setFeedback("Theater deleted.");
+      refreshQueries();
+    },
+    onError: (error) => setFeedback(error.message)
+  });
 
   const createShowtimeMutation = useMutation({
     mutationFn: createShowtime,
@@ -102,8 +119,17 @@ export function AdminDashboardPage() {
     },
     onError: (error) => setFeedback(error.message)
   });
+  const deleteShowtimeMutation = useMutation({
+    mutationFn: deleteShowtime,
+    onSuccess: () => {
+      setFeedback("Showtime deleted.");
+      refreshQueries();
+    },
+    onError: (error) => setFeedback(error.message)
+  });
 
   const movieItems = moviesQuery.data?.items ?? [];
+  const theaterItems = theatersQuery.data?.items ?? [];
   const showtimeItems = showtimesQuery.data?.items ?? [];
   const movieOptions = useMemo(() => movieItems.map((movie) => ({ id: movie.id, title: movie.title })), [movieItems]);
 
@@ -304,6 +330,30 @@ export function AdminDashboardPage() {
         </article>
 
         <article className="admin-card">
+          <h3>Theaters</h3>
+          {theatersQuery.isLoading && <p className="status">Loading theaters...</p>}
+          {theatersQuery.isError && <p className="status error">Could not load theaters.</p>}
+          {!theatersQuery.isLoading && !theatersQuery.isError && (
+            <ul className="admin-list">
+              {theaterItems.map((theater) => (
+                <li key={theater.id}>
+                  <span>
+                    #{theater.id} {theater.name} ({theater.city})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => deleteTheaterMutation.mutate(theater.id)}
+                    disabled={deleteTheaterMutation.isPending}
+                  >
+                    Delete
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </article>
+
+        <article className="admin-card">
           <h3>Recent showtimes</h3>
           {showtimesQuery.isLoading && <p className="status">Loading showtimes...</p>}
           {showtimesQuery.isError && <p className="status error">Could not load showtimes.</p>}
@@ -314,6 +364,13 @@ export function AdminDashboardPage() {
                   <span>
                     #{showtime.id} {showtime.theater_name} ({showtime.status})
                   </span>
+                  <button
+                    type="button"
+                    onClick={() => deleteShowtimeMutation.mutate(showtime.id)}
+                    disabled={deleteShowtimeMutation.isPending}
+                  >
+                    Delete
+                  </button>
                 </li>
               ))}
             </ul>
