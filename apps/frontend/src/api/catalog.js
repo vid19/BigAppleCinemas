@@ -65,6 +65,14 @@ export function createTheater(payload) {
   return request("/admin/theaters", { method: "POST", body: payload });
 }
 
+export function deleteTheater(theaterId) {
+  return request(`/admin/theaters/${theaterId}`, { method: "DELETE" });
+}
+
 export function createShowtime(payload) {
   return request("/admin/showtimes", { method: "POST", body: payload });
+}
+
+export function deleteShowtime(showtimeId) {
+  return request(`/admin/showtimes/${showtimeId}`, { method: "DELETE" });
 }
