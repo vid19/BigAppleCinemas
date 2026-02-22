@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.cache import delete_cache_prefix
 from app.db.session import get_db_session
 from app.models.movie import Movie
+from app.models.reservation import ShowtimeSeatStatus
 from app.models.showtime import Auditorium, Showtime, Theater
 from app.schemas.catalog import (
     MovieCreate,
@@ -18,6 +19,7 @@ from app.schemas.catalog import (
     TheaterRead,
     TheaterUpdate,
 )
+from app.services.seat_inventory import sync_showtime_seat_statuses
 
 router = APIRouter()
 
@@ -194,6 +196,8 @@ async def create_showtime(
 
     showtime = Showtime(**payload.model_dump())
     session.add(showtime)
+    await session.flush()
+    await sync_showtime_seat_statuses(session, showtime)
     await session.commit()
     await _invalidate_catalog_cache()
     return await _get_showtime_read(session, showtime.id)
@@ -238,6 +242,8 @@ async def update_showtime(
             raise HTTPException(status_code=404, detail="Auditorium not found")
 
     _apply_updates(showtime, updates)
+    await session.flush()
+    await sync_showtime_seat_statuses(session, showtime)
     await session.commit()
     await _invalidate_catalog_cache()
     return await _get_showtime_read(session, showtime.id)
@@ -254,6 +260,9 @@ async def delete_showtime(
     if showtime is None:
         raise HTTPException(status_code=404, detail="Showtime not found")
 
+    await session.execute(
+        delete(ShowtimeSeatStatus).where(ShowtimeSeatStatus.showtime_id == showtime_id)
+    )
     await session.delete(showtime)
     try:
         await session.commit()

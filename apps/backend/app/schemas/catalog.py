@@ -69,6 +69,27 @@ class ShowtimeListResponse(BaseModel):
     offset: int
 
 
+class ShowtimeSeatRead(BaseModel):
+    seat_id: int
+    seat_code: str
+    row_label: str
+    seat_number: int
+    seat_type: str
+    status: str
+
+
+class ShowtimeSeatMapResponse(BaseModel):
+    showtime_id: int
+    movie_id: int
+    auditorium_id: int
+    theater_id: int
+    theater_name: str
+    starts_at: datetime
+    seatmap_name: str | None
+    layout_json: dict
+    seats: list[ShowtimeSeatRead]
+
+
 class MovieCreate(BaseModel):
     title: str = Field(min_length=1, max_length=255)
     description: str = ""

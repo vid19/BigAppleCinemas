@@ -1,0 +1,166 @@
+import { renderToStaticMarkup } from "react-dom/server";
+import { MemoryRouter } from "react-router-dom";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { MovieDetailPage } from "./MovieDetailPage";
+import { MoviesPage } from "./MoviesPage";
+import { SeatSelectionPage } from "./SeatSelectionPage";
+
+const useQueryMock = vi.fn();
+let paramsMock = { movieId: "3" };
+
+vi.mock("@tanstack/react-query", () => ({
+  useQuery: (options) => useQueryMock(options)
+}));
+
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual("react-router-dom");
+  return {
+    ...actual,
+    useParams: () => paramsMock
+  };
+});
+
+function renderPage(element) {
+  return renderToStaticMarkup(<MemoryRouter>{element}</MemoryRouter>);
+}
+
+beforeEach(() => {
+  paramsMock = { movieId: "3" };
+  useQueryMock.mockReset();
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+describe("catalog pages", () => {
+  it("renders movie cards on movies page", () => {
+    useQueryMock.mockImplementation(({ queryKey }) => {
+      if (queryKey[0] === "movies") {
+        return {
+          isLoading: false,
+          isError: false,
+          data: {
+            items: [
+              {
+                id: 1,
+                title: "Skyline Heist",
+                runtime_minutes: 126,
+                rating: "PG-13",
+                poster_url: null
+              }
+            ],
+            total: 1
+          }
+        };
+      }
+
+      return { isLoading: false, isError: false, data: {} };
+    });
+
+    const html = renderPage(<MoviesPage />);
+
+    expect(html).toContain("Skyline Heist");
+    expect(html).toContain("View showtimes");
+    expect(html).toContain("Page 1");
+  });
+
+  it("renders theater filters and showtimes on movie detail page", () => {
+    useQueryMock.mockImplementation(({ queryKey }) => {
+      if (queryKey[0] === "movie") {
+        return {
+          isLoading: false,
+          isError: false,
+          data: {
+            id: 3,
+            title: "The Last Encore",
+            description: "A comeback drama.",
+            runtime_minutes: 104,
+            rating: "PG",
+            release_date: "2025-12-17",
+            poster_url: null
+          }
+        };
+      }
+      if (queryKey[0] === "showtimes") {
+        return {
+          isLoading: false,
+          isError: false,
+          data: {
+            items: [
+              {
+                id: 11,
+                theater_name: "Big Apple Cinemas - Midtown",
+                starts_at: "2026-02-22T10:00:00Z",
+                status: "SCHEDULED"
+              }
+            ]
+          }
+        };
+      }
+      if (queryKey[0] === "theaters") {
+        return {
+          isLoading: false,
+          isError: false,
+          data: {
+            items: [{ id: 1, name: "Big Apple Cinemas - Midtown", city: "New York" }]
+          }
+        };
+      }
+      return { isLoading: false, isError: false, data: {} };
+    });
+
+    const html = renderPage(<MovieDetailPage />);
+
+    expect(html).toContain("The Last Encore");
+    expect(html).toContain("All theaters");
+    expect(html).toContain("Select seats");
+    expect(html).toContain("SCHEDULED");
+  });
+
+  it("renders interactive seat inventory details on seat selection page", () => {
+    paramsMock = { showtimeId: "11" };
+    useQueryMock.mockImplementation(({ queryKey }) => {
+      if (queryKey[0] === "showtime-seats") {
+        return {
+          isLoading: false,
+          isError: false,
+          data: {
+            showtime_id: 11,
+            movie_id: 3,
+            theater_name: "Big Apple Cinemas - Midtown",
+            starts_at: "2026-02-22T10:00:00Z",
+            seatmap_name: "Auditorium 1 Standard Layout",
+            seats: [
+              {
+                seat_id: 1,
+                seat_code: "A1",
+                row_label: "A",
+                seat_number: 1,
+                seat_type: "VIP",
+                status: "AVAILABLE"
+              },
+              {
+                seat_id: 2,
+                seat_code: "A2",
+                row_label: "A",
+                seat_number: 2,
+                seat_type: "VIP",
+                status: "SOLD"
+              }
+            ]
+          }
+        };
+      }
+      return { isLoading: false, isError: false, data: {} };
+    });
+
+    const html = renderPage(<SeatSelectionPage />);
+
+    expect(html).toContain("Select your seats");
+    expect(html).toContain("Booking summary");
+    expect(html).toContain("A1");
+    expect(html).toContain("Continue to hold");
+  });
+});

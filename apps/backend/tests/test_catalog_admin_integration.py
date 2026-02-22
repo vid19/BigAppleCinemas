@@ -30,6 +30,20 @@ def test_catalog_list_endpoints_return_seeded_data(client: TestClient) -> None:
     assert showtimes_payload["total"] >= 1
 
 
+def test_showtime_seat_map_endpoint_returns_inventory(client: TestClient) -> None:
+    showtimes_response = client.get("/api/showtimes", params={"limit": 1, "offset": 0})
+    assert showtimes_response.status_code == 200
+    showtime_id = showtimes_response.json()["items"][0]["id"]
+
+    seats_response = client.get(f"/api/showtimes/{showtime_id}/seats")
+    assert seats_response.status_code == 200
+
+    payload = seats_response.json()
+    assert payload["showtime_id"] == showtime_id
+    assert len(payload["seats"]) > 0
+    assert all("status" in seat for seat in payload["seats"])
+
+
 def test_admin_movie_crud_flow(client: TestClient) -> None:
     create_response = client.post(
         "/api/admin/movies",
