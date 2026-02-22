@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { fetchMyOrders, fetchMyTickets } from "../api/catalog";
@@ -13,6 +13,7 @@ function formatDateTime(dateValue) {
 }
 
 export function MyTicketsPage() {
+  const [copiedTicketId, setCopiedTicketId] = useState(null);
   const ticketsQuery = useQuery({
     queryKey: ["me-tickets"],
     queryFn: fetchMyTickets
@@ -32,6 +33,17 @@ export function MyTicketsPage() {
     [tickets]
   );
   const orders = ordersQuery.data?.items ?? [];
+  const usedTicketsCount = tickets.filter((ticket) => ticket.ticket_status === "USED").length;
+
+  async function copyToken(ticketId, token) {
+    try {
+      await globalThis.navigator?.clipboard?.writeText(token);
+      setCopiedTicketId(ticketId);
+      window.setTimeout(() => setCopiedTicketId(null), 1800);
+    } catch {
+      setCopiedTicketId(null);
+    }
+  }
 
   return (
     <section className="page page-shell">
@@ -47,24 +59,56 @@ export function MyTicketsPage() {
         <p className="status error">Could not load your ticket data.</p>
       )}
 
+      {!ticketsQuery.isLoading && !ticketsQuery.isError && !ordersQuery.isLoading && (
+        <div className="ticket-summary-grid">
+          <article className="ticket-summary-stat">
+            <p>Active tickets</p>
+            <strong>{activeTickets.length}</strong>
+          </article>
+          <article className="ticket-summary-stat">
+            <p>Used tickets</p>
+            <strong>{usedTicketsCount}</strong>
+          </article>
+          <article className="ticket-summary-stat">
+            <p>Past/void tickets</p>
+            <strong>{pastTickets.length}</strong>
+          </article>
+          <article className="ticket-summary-stat">
+            <p>Total orders</p>
+            <strong>{orders.length}</strong>
+          </article>
+        </div>
+      )}
+
       {!ticketsQuery.isLoading && !ticketsQuery.isError && (
         <div className="ticket-grid">
           <article className="admin-card ticket-card">
             <h3>Active tickets ({activeTickets.length})</h3>
             {activeTickets.length === 0 && <p className="status">No active tickets yet.</p>}
             {activeTickets.length > 0 && (
-              <ul className="admin-list">
+              <ul className="ticket-active-grid">
                 {activeTickets.map((ticket) => (
-                  <li key={ticket.ticket_id}>
-                    <div className="admin-list-main">
-                      <span>
-                        {ticket.movie_title} • {ticket.seat_code}
-                      </span>
-                      <span>{formatDateTime(ticket.showtime_starts_at)}</span>
+                  <li className="ticket-item-card" key={ticket.ticket_id}>
+                    <div className="ticket-item-top">
+                      <strong>{ticket.movie_title}</strong>
+                      <span className="ticket-pill">VALID</span>
                     </div>
                     <p className="status">
-                      {ticket.theater_name} • Token {ticket.qr_token.slice(0, 18)}...
+                      {ticket.theater_name} • {formatDateTime(ticket.showtime_starts_at)}
                     </p>
+                    <div className="ticket-meta-row">
+                      <span>Seat {ticket.seat_code}</span>
+                      <span>{ticket.seat_type}</span>
+                    </div>
+                    <div className="ticket-token-row">
+                      <code>{ticket.qr_token}</code>
+                      <button
+                        type="button"
+                        onClick={() => copyToken(ticket.ticket_id, ticket.qr_token)}
+                      >
+                        {copiedTicketId === ticket.ticket_id ? "Copied" : "Copy token"}
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -82,7 +126,7 @@ export function MyTicketsPage() {
                       <span>
                         {ticket.movie_title} • {ticket.seat_code}
                       </span>
-                      <span>{ticket.ticket_status}</span>
+                      <span className="ticket-pill muted">{ticket.ticket_status}</span>
                     </div>
                     <p className="status">
                       Used {ticket.used_at ? formatDateTime(ticket.used_at) : "N/A"}

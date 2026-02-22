@@ -184,7 +184,11 @@ export function AdminDashboardPage() {
   const movieItems = moviesQuery.data?.items ?? [];
   const theaterItems = theatersQuery.data?.items ?? [];
   const showtimeItems = showtimesQuery.data?.items ?? [];
-  const movieOptions = useMemo(() => movieItems.map((movie) => ({ id: movie.id, title: movie.title })), [movieItems]);
+  const movieOptions = useMemo(
+    () => movieItems.map((movie) => ({ id: movie.id, title: movie.title })),
+    [movieItems]
+  );
+  const salesSnapshot = salesReportQuery.data;
 
   return (
     <section className="page page-shell admin-dashboard-page">
@@ -195,31 +199,39 @@ export function AdminDashboardPage() {
 
       {feedback && <p className="status">{feedback}</p>}
 
-      <article className="admin-card">
+      <article className="admin-card admin-sales-card">
         <h3>Sales snapshot</h3>
         {salesReportQuery.isLoading && <p className="status">Loading sales metrics...</p>}
         {salesReportQuery.isError && <p className="status error">Could not load sales metrics.</p>}
         {!salesReportQuery.isLoading && !salesReportQuery.isError && (
           <>
-            <div className="inline-fields">
-              <p className="status">Paid orders: {salesReportQuery.data.paid_orders}</p>
-              <p className="status">
-                Revenue: ${(salesReportQuery.data.gross_revenue_cents / 100).toFixed(2)}
-              </p>
+            <div className="admin-kpi-grid">
+              <article>
+                <p>Paid orders</p>
+                <strong>{salesSnapshot.paid_orders}</strong>
+              </article>
+              <article>
+                <p>Revenue</p>
+                <strong>${(salesSnapshot.gross_revenue_cents / 100).toFixed(2)}</strong>
+              </article>
+              <article>
+                <p>Tickets sold</p>
+                <strong>{salesSnapshot.tickets_sold}</strong>
+              </article>
+              <article>
+                <p>Active holds</p>
+                <strong>{salesSnapshot.active_holds}</strong>
+              </article>
             </div>
-            <div className="inline-fields">
-              <p className="status">Tickets sold: {salesReportQuery.data.tickets_sold}</p>
-              <p className="status">Active holds: {salesReportQuery.data.active_holds}</p>
-            </div>
-            {salesReportQuery.data.showtimes.length > 0 && (
-              <ul className="admin-list">
-                {salesReportQuery.data.showtimes.map((item) => (
+            {salesSnapshot.showtimes.length > 0 && (
+              <ul className="admin-list admin-report-list">
+                {salesSnapshot.showtimes.map((item) => (
                   <li key={item.showtime_id}>
                     <div className="admin-list-main">
                       <span>
                         #{item.showtime_id} {item.movie_title}
                       </span>
-                      <span>{item.occupancy_percent.toFixed(2)}% occupied</span>
+                      <span className="admin-pill">{item.occupancy_percent.toFixed(2)}% occupied</span>
                     </div>
                     <p className="status">
                       {item.theater_name} • {item.sold_seats}/{item.capacity} sold
@@ -233,7 +245,7 @@ export function AdminDashboardPage() {
       </article>
 
       <div className="admin-grid">
-        <article className="admin-card">
+        <article className="admin-card admin-form-card">
           <h3>Create movie</h3>
           <form
             onSubmit={(event) => {
@@ -278,7 +290,7 @@ export function AdminDashboardPage() {
           </form>
         </article>
 
-        <article className="admin-card">
+        <article className="admin-card admin-form-card">
           <h3>Create theater</h3>
           <form
             onSubmit={(event) => {
@@ -326,7 +338,7 @@ export function AdminDashboardPage() {
           </form>
         </article>
 
-        <article className="admin-card">
+        <article className="admin-card admin-form-card">
           <h3>Create showtime</h3>
           <form
             onSubmit={(event) => {
@@ -395,7 +407,7 @@ export function AdminDashboardPage() {
       </div>
 
       <div className="admin-grid">
-        <article className="admin-card">
+        <article className="admin-card admin-data-card">
           <h3>Movies</h3>
           {moviesQuery.isLoading && <p className="status">Loading movies...</p>}
           {moviesQuery.isError && <p className="status error">Could not load movies.</p>}
@@ -408,10 +420,10 @@ export function AdminDashboardPage() {
                       #{movie.id} {movie.title}
                     </span>
                     <div className="admin-actions">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingMovieId(movie.id);
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingMovieId(movie.id);
                           setMovieEditForm({
                             title: movie.title,
                             runtime_minutes: movie.runtime_minutes,
@@ -484,7 +496,7 @@ export function AdminDashboardPage() {
           )}
         </article>
 
-        <article className="admin-card">
+        <article className="admin-card admin-data-card">
           <h3>Theaters</h3>
           {theatersQuery.isLoading && <p className="status">Loading theaters...</p>}
           {theatersQuery.isError && <p className="status error">Could not load theaters.</p>}
@@ -571,7 +583,7 @@ export function AdminDashboardPage() {
           )}
         </article>
 
-        <article className="admin-card">
+        <article className="admin-card admin-data-card">
           <h3>Recent showtimes</h3>
           {showtimesQuery.isLoading && <p className="status">Loading showtimes...</p>}
           {showtimesQuery.isError && <p className="status error">Could not load showtimes.</p>}

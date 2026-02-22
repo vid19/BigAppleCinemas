@@ -160,7 +160,6 @@ export function SeatSelectionPage() {
         <p>
           {seatData.theater_name} • {formatDateTime(seatData.starts_at)}
         </p>
-        <p className="seat-layout-label">Screen this way</p>
         {activeHold && (
           <p className="seat-hold-pill">Hold expires in {holdTimerText}</p>
         )}

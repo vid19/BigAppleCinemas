@@ -1333,6 +1333,235 @@ body {
   box-shadow: 0 12px 28px rgba(16, 44, 81, 0.08);
 }
 
+.ticket-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 0.75rem;
+}
+
+.ticket-summary-stat {
+  border: 1px solid #d4e2f5;
+  border-radius: 12px;
+  padding: 0.75rem;
+  background: linear-gradient(180deg, #ffffff, #f2f8ff);
+}
+
+.ticket-summary-stat p {
+  margin: 0;
+  color: #4e6382;
+}
+
+.ticket-summary-stat strong {
+  display: inline-block;
+  margin-top: 0.28rem;
+  font-size: 1.35rem;
+  color: #0f4c98;
+}
+
+.ticket-active-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.7rem;
+}
+
+.ticket-item-card {
+  border: 1px solid #d3e0f1;
+  border-radius: 12px;
+  background: #f3f8ff;
+  padding: 0.72rem;
+}
+
+.ticket-item-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.ticket-meta-row {
+  margin-top: 0.2rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  color: #4e6382;
+  font-size: 0.9rem;
+}
+
+.ticket-token-row {
+  margin-top: 0.55rem;
+  border: 1px solid #c5d6ed;
+  border-radius: 10px;
+  background: #fff;
+  padding: 0.45rem 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.ticket-token-row code {
+  color: #1b487d;
+  font-size: 0.82rem;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.ticket-token-row button {
+  border: 1px solid #bad0ed;
+  border-radius: 8px;
+  background: #e5f0ff;
+  color: #0f4c98;
+  font-weight: 700;
+  padding: 0.32rem 0.62rem;
+  cursor: pointer;
+}
+
+.ticket-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.2rem 0.5rem;
+  background: #dff0e8;
+  color: #1f6b4b;
+  font-weight: 700;
+  font-size: 0.76rem;
+}
+
+.ticket-pill.muted {
+  background: #e6ecf7;
+  color: #466289;
+}
+
+.admin-sales-card {
+  background: linear-gradient(180deg, #ffffff, #f5f9ff);
+}
+
+.admin-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.65rem;
+  margin-bottom: 0.7rem;
+}
+
+.admin-kpi-grid article {
+  border: 1px solid #d5e2f3;
+  border-radius: 10px;
+  padding: 0.6rem;
+  background: #f8fbff;
+}
+
+.admin-kpi-grid article p {
+  margin: 0;
+  color: #4c6282;
+  font-size: 0.88rem;
+}
+
+.admin-kpi-grid article strong {
+  display: inline-block;
+  margin-top: 0.2rem;
+  color: #114d99;
+  font-size: 1.15rem;
+}
+
+.admin-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.2rem 0.52rem;
+  background: #e6f1ff;
+  color: #164c95;
+  font-weight: 700;
+  font-size: 0.78rem;
+}
+
+.admin-report-list li {
+  background: #f8fbff;
+}
+
+.admin-form-card,
+.admin-data-card {
+  background: linear-gradient(180deg, #ffffff, #f8fbff);
+}
+
+.scanner-layout-card {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.scanner-help-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.scanner-help-row .status {
+  margin: 0;
+}
+
+.scanner-help-row button {
+  padding: 0.4rem 0.65rem;
+}
+
+.scanner-form {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.scanner-form label {
+  display: grid;
+  gap: 0.32rem;
+  font-weight: 600;
+  color: #2d4f77;
+}
+
+.scanner-result-card h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.52rem;
+}
+
+.scanner-result-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.2rem 0.52rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.scanner-result-pill.valid {
+  background: #dff0e8;
+  color: #1f6b4b;
+}
+
+.scanner-result-pill.already_used {
+  background: #ffe8c6;
+  color: #835615;
+}
+
+.scanner-result-pill.invalid {
+  background: #fde3e3;
+  color: #8d1f1f;
+}
+
+.scanner-result-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.45rem;
+}
+
+.scanner-result-meta .status {
+  margin: 0;
+  border: 1px solid #d4e0f2;
+  border-radius: 8px;
+  padding: 0.36rem 0.45rem;
+  background: #f8fbff;
+}
+
 .checkout-page-modern .checkout-payment-card {
   background: linear-gradient(180deg, #ffffff, #f7fbff);
 }
