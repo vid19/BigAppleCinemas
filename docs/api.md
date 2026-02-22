@@ -21,7 +21,9 @@ Base URL: `http://localhost:8000/api`
 
 ## Booking (Scaffold)
 
-- `POST /reservations`
+- `POST /reservations` (creates transactional seat hold with expiry)
+- `GET /reservations/{reservation_id}`
+- `DELETE /reservations/{reservation_id}` (release hold early)
 - `POST /tickets/scan`
 
 ## Admin Catalog CRUD

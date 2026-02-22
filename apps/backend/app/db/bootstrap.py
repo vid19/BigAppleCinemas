@@ -6,6 +6,7 @@ from app.db.base import Base
 from app.db.session import AsyncSessionLocal, engine
 from app.models.movie import Movie
 from app.models.showtime import Auditorium, Showtime, Theater
+from app.models.user import User
 from app.services.seat_inventory import (
     ensure_auditorium_seat_inventory,
     sync_showtime_seat_statuses,
@@ -93,6 +94,16 @@ async def bootstrap_local_data() -> None:
                         status="SCHEDULED",
                     )
                 )
+
+        demo_user_exists = (await session.execute(select(User.id).limit(1))).scalar_one_or_none()
+        if demo_user_exists is None:
+            session.add(
+                User(
+                    email="demo@bigapplecinemas.local",
+                    password_hash="demo-bootstrap-password",
+                    role="ADMIN",
+                )
+            )
 
         all_auditoriums = (await session.execute(select(Auditorium))).scalars().all()
         for item in all_auditoriums:

@@ -1,6 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createMovie, deleteMovie, fetchMovies, fetchShowtimeSeats } from "./catalog";
+import {
+  cancelReservation,
+  createMovie,
+  createReservation,
+  deleteMovie,
+  fetchMovies,
+  fetchShowtimeSeats
+} from "./catalog";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -73,5 +80,33 @@ describe("catalog api client", () => {
         rating: "PG"
       })
     ).rejects.toThrow("Request failed with status 400: Invalid payload");
+  });
+
+  it("creates and cancels reservations", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        json: async () => ({ id: 22, status: "ACTIVE", seat_ids: [3, 4] })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 204,
+        json: async () => ({})
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const reservation = await createReservation({ showtime_id: 8, seat_ids: [3, 4] });
+    const canceled = await cancelReservation(22);
+
+    expect(reservation.id).toBe(22);
+    expect(canceled).toBeNull();
+    const [createUrl, createOptions] = fetchMock.mock.calls[0];
+    expect(createUrl).toContain("/api/reservations");
+    expect(createOptions.method).toBe("POST");
+    const [cancelUrl, cancelOptions] = fetchMock.mock.calls[1];
+    expect(cancelUrl).toContain("/api/reservations/22");
+    expect(cancelOptions.method).toBe("DELETE");
   });
 });
