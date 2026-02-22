@@ -26,6 +26,16 @@ Base URL: `http://localhost:8000/api`
 - `DELETE /reservations/{reservation_id}` (release hold early)
 - `POST /tickets/scan`
 
+## Checkout + Payments
+
+- `POST /checkout/session`
+  - Creates pending order from active reservation (server-side total calculation)
+- `POST /checkout/demo/confirm`
+  - Local demo endpoint to finalize pending order as paid
+- `POST /webhooks/stripe`
+  - Idempotent webhook consumer for `checkout.session.completed`
+  - Requires `x-webhook-secret` header
+
 ## Admin Catalog CRUD
 
 ### Movies

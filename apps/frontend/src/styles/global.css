@@ -542,6 +542,43 @@ body {
   opacity: 0.45;
 }
 
+.checkout-page {
+  display: grid;
+}
+
+.checkout-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1rem;
+  max-width: 700px;
+}
+
+.checkout-card h2 {
+  margin: 0.4rem 0 0.5rem;
+}
+
+.checkout-card button {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--brand-soft);
+  color: var(--brand);
+  font-weight: 700;
+  padding: 0.55rem 0.8rem;
+  cursor: pointer;
+}
+
+.checkout-success ul {
+  margin: 0.4rem 0 0.7rem;
+  padding-left: 1.15rem;
+}
+
+.checkout-success a {
+  color: var(--brand);
+  text-decoration: none;
+  font-weight: 700;
+}
+
 @media (min-width: 768px) {
   .content {
     padding: 1.5rem;

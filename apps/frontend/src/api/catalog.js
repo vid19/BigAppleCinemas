@@ -63,6 +63,14 @@ export function cancelReservation(reservationId) {
   return request(`/reservations/${reservationId}`, { method: "DELETE" });
 }
 
+export function createCheckoutSession(payload) {
+  return request("/checkout/session", { method: "POST", body: payload });
+}
+
+export function confirmDemoCheckout(payload) {
+  return request("/checkout/demo/confirm", { method: "POST", body: payload });
+}
+
 export function fetchTheaters({ city = "", limit = 100, offset = 0 } = {}) {
   return request("/theaters", {
     params: { city, limit, offset }

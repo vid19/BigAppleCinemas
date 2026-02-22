@@ -1,8 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
-import { cancelReservation, createReservation, fetchShowtimeSeats } from "../api/catalog";
+import {
+  cancelReservation,
+  createCheckoutSession,
+  createReservation,
+  fetchShowtimeSeats
+} from "../api/catalog";
 
 function formatDateTime(dateValue) {
   return new Date(dateValue).toLocaleString([], {
@@ -19,6 +24,7 @@ function countByStatus(seats, status) {
 
 export function SeatSelectionPage() {
   const { showtimeId } = useParams();
+  const navigate = useNavigate();
   const [selectedSeatIds, setSelectedSeatIds] = useState([]);
   const [reservation, setReservation] = useState(null);
   const [feedback, setFeedback] = useState("");
@@ -54,6 +60,15 @@ export function SeatSelectionPage() {
       setReservation(null);
       setSelectedSeatIds([]);
       refetch();
+    },
+    onError: (error) => setFeedback(error.message)
+  });
+  const checkoutMutation = useMutation({
+    mutationFn: createCheckoutSession,
+    onSuccess: (payload) => {
+      navigate(
+        `/checkout/processing?order_id=${payload.order_id}&session_id=${payload.provider_session_id}`
+      );
     },
     onError: (error) => setFeedback(error.message)
   });
@@ -232,6 +247,15 @@ export function SeatSelectionPage() {
                 onClick={() => cancelReservationMutation.mutate(reservation.id)}
               >
                 {cancelReservationMutation.isPending ? "Releasing..." : "Release hold"}
+              </button>
+            )}
+            {activeHold && (
+              <button
+                type="button"
+                disabled={checkoutMutation.isPending}
+                onClick={() => checkoutMutation.mutate({ reservation_id: reservation.id })}
+              >
+                {checkoutMutation.isPending ? "Starting checkout..." : "Proceed to checkout"}
               </button>
             )}
           </div>
