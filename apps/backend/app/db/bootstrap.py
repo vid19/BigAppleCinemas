@@ -1,6 +1,7 @@
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import Base
 from app.db.session import AsyncSessionLocal, engine
@@ -11,6 +12,38 @@ from app.services.seat_inventory import (
     ensure_auditorium_seat_inventory,
     sync_showtime_seat_statuses,
 )
+
+
+async def _ensure_upcoming_showtimes(
+    session: AsyncSession,
+    *,
+    auditorium_id: int,
+    movies: list[Movie],
+) -> None:
+    """Keep local demo data fresh by guaranteeing at least one upcoming showtime per movie."""
+    now = datetime.now(tz=UTC).replace(minute=0, second=0, microsecond=0)
+    for index, movie in enumerate(movies):
+        has_upcoming = (
+            await session.execute(
+                select(Showtime.id).where(
+                    Showtime.movie_id == movie.id,
+                    Showtime.starts_at >= now,
+                )
+            )
+        ).scalar_one_or_none()
+        if has_upcoming is not None:
+            continue
+
+        starts_at = now + timedelta(hours=(index + 1) * 2)
+        session.add(
+            Showtime(
+                movie_id=movie.id,
+                auditorium_id=auditorium_id,
+                starts_at=starts_at,
+                ends_at=starts_at + timedelta(minutes=movie.runtime_minutes + 20),
+                status="SCHEDULED",
+            )
+        )
 
 
 async def bootstrap_local_data() -> None:
@@ -50,7 +83,7 @@ async def bootstrap_local_data() -> None:
 
         movie_exists = (await session.execute(select(Movie.id).limit(1))).scalar_one_or_none()
         if movie_exists is None:
-            movies = [
+            seed_movies = [
                 Movie(
                     title="Skyline Heist",
                     description="An elite crew attempts a high-stakes heist above Manhattan.",
@@ -79,21 +112,17 @@ async def bootstrap_local_data() -> None:
                     metadata_json={"genre": ["Drama"]},
                 ),
             ]
-            session.add_all(movies)
+            session.add_all(seed_movies)
             await session.flush()
 
-            now = datetime.now(tz=UTC).replace(minute=0, second=0, microsecond=0)
-            for index, movie in enumerate(movies):
-                starts_at = now + timedelta(hours=(index + 1) * 2)
-                session.add(
-                    Showtime(
-                        movie_id=movie.id,
-                        auditorium_id=auditorium.id,
-                        starts_at=starts_at,
-                        ends_at=starts_at + timedelta(minutes=movie.runtime_minutes + 20),
-                        status="SCHEDULED",
-                    )
-                )
+        movies = (
+            await session.execute(select(Movie).order_by(Movie.id.asc()))
+        ).scalars().all()
+        await _ensure_upcoming_showtimes(
+            session,
+            auditorium_id=auditorium.id,
+            movies=movies,
+        )
 
         demo_user_exists = (await session.execute(select(User.id).limit(1))).scalar_one_or_none()
         if demo_user_exists is None:

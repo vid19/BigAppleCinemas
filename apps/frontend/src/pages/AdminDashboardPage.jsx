@@ -40,7 +40,8 @@ export function AdminDashboardPage() {
     title: "",
     description: "",
     runtime_minutes: 110,
-    rating: "PG-13"
+    rating: "PG-13",
+    poster_url: ""
   });
   const [theaterForm, setTheaterForm] = useState({
     name: "",
@@ -59,7 +60,8 @@ export function AdminDashboardPage() {
   const [movieEditForm, setMovieEditForm] = useState({
     title: "",
     runtime_minutes: 120,
-    rating: "PG-13"
+    rating: "PG-13",
+    poster_url: ""
   });
   const [editingTheaterId, setEditingTheaterId] = useState(null);
   const [theaterEditForm, setTheaterEditForm] = useState({
@@ -79,7 +81,7 @@ export function AdminDashboardPage() {
 
   const showtimesQuery = useQuery({
     queryKey: ["admin-showtimes"],
-    queryFn: () => fetchShowtimes({ limit: 25, offset: 0 })
+    queryFn: () => fetchShowtimes({ includePast: true, limit: 25, offset: 0 })
   });
   const theatersQuery = useQuery({
     queryKey: ["admin-theaters"],
@@ -104,7 +106,7 @@ export function AdminDashboardPage() {
     mutationFn: createMovie,
     onSuccess: () => {
       setFeedback("Movie created.");
-      setMovieForm((prev) => ({ ...prev, title: "", description: "" }));
+      setMovieForm((prev) => ({ ...prev, title: "", description: "", poster_url: "" }));
       refreshQueries();
     },
     onError: (error) => setFeedback(error.message)
@@ -250,7 +252,10 @@ export function AdminDashboardPage() {
           <form
             onSubmit={(event) => {
               event.preventDefault();
-              createMovieMutation.mutate(movieForm);
+              createMovieMutation.mutate({
+                ...movieForm,
+                poster_url: movieForm.poster_url.trim() || null
+              });
             }}
           >
             <input
@@ -284,6 +289,13 @@ export function AdminDashboardPage() {
                 onChange={(event) => setMovieForm((prev) => ({ ...prev, rating: event.target.value }))}
               />
             </div>
+            <input
+              placeholder="Poster URL (optional)"
+              value={movieForm.poster_url}
+              onChange={(event) =>
+                setMovieForm((prev) => ({ ...prev, poster_url: event.target.value }))
+              }
+            />
             <button type="submit" disabled={createMovieMutation.isPending}>
               {createMovieMutation.isPending ? "Creating..." : "Create movie"}
             </button>
@@ -427,7 +439,8 @@ export function AdminDashboardPage() {
                           setMovieEditForm({
                             title: movie.title,
                             runtime_minutes: movie.runtime_minutes,
-                            rating: movie.rating
+                            rating: movie.rating,
+                            poster_url: movie.poster_url || ""
                           });
                         }}
                       >
@@ -452,7 +465,8 @@ export function AdminDashboardPage() {
                           payload: {
                             title: movieEditForm.title,
                             runtime_minutes: Number(movieEditForm.runtime_minutes),
-                            rating: movieEditForm.rating
+                            rating: movieEditForm.rating,
+                            poster_url: movieEditForm.poster_url.trim() || null
                           }
                         });
                       }}
@@ -478,6 +492,16 @@ export function AdminDashboardPage() {
                         value={movieEditForm.rating}
                         onChange={(event) =>
                           setMovieEditForm((prev) => ({ ...prev, rating: event.target.value }))
+                        }
+                      />
+                      <input
+                        placeholder="Poster URL"
+                        value={movieEditForm.poster_url}
+                        onChange={(event) =>
+                          setMovieEditForm((prev) => ({
+                            ...prev,
+                            poster_url: event.target.value
+                          }))
                         }
                       />
                       <div className="admin-actions">

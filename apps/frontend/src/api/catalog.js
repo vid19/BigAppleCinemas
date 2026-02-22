@@ -44,9 +44,16 @@ export function fetchMovie(movieId) {
   return request(`/movies/${movieId}`);
 }
 
-export function fetchShowtimes({ movieId, theaterId, date, limit = 20, offset = 0 } = {}) {
+export function fetchShowtimes({
+  movieId,
+  theaterId,
+  date,
+  includePast = false,
+  limit = 20,
+  offset = 0
+} = {}) {
   return request("/showtimes", {
-    params: { movie_id: movieId, theater_id: theaterId, date, limit, offset }
+    params: { movie_id: movieId, theater_id: theaterId, date, include_past: includePast, limit, offset }
   });
 }
 

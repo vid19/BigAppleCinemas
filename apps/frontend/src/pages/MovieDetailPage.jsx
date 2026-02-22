@@ -100,6 +100,7 @@ export function MovieDetailPage() {
           <input
             id="show-date"
             type="date"
+            min={todayDateInput()}
             value={selectedDate}
             onChange={(event) => setSelectedDate(event.target.value)}
           />
