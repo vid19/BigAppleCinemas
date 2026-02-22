@@ -1,0 +1,42 @@
+:root {
+  font-family: "DM Sans", "Segoe UI", sans-serif;
+  color: #13233a;
+  background: radial-gradient(circle at top, #f8fbff 0%, #eef4ff 45%, #e7eef8 100%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.layout {
+  min-height: 100vh;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #cfdbef;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+}
+
+.header nav {
+  display: flex;
+  gap: 1rem;
+}
+
+.header a {
+  color: #0f3f80;
+  text-decoration: none;
+}
+
+.content {
+  padding: 1.5rem;
+}
