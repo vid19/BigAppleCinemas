@@ -8,7 +8,16 @@ export default [
     files: ["src/**/*.js", "src/**/*.jsx"],
     languageOptions: {
       ecmaVersion: 2022,
-      sourceType: "module"
+      sourceType: "module",
+      parserOptions: {
+        ecmaFeatures: {
+          jsx: true
+        }
+      },
+      globals: {
+        document: "readonly",
+        window: "readonly"
+      }
     },
     plugins: {
       react,
@@ -16,6 +25,7 @@ export default [
     },
     rules: {
       "react/react-in-jsx-scope": "off",
+      "react/jsx-uses-vars": "error",
       "react-hooks/rules-of-hooks": "error"
     },
     settings: {
