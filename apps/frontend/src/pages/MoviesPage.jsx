@@ -1,8 +1,94 @@
+import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+
+import { fetchMovies } from "../api/catalog";
+
+const PAGE_SIZE = 12;
+
 export function MoviesPage() {
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(0);
+
+  const offset = page * PAGE_SIZE;
+  const queryParams = useMemo(
+    () => ({ q: query.trim(), limit: PAGE_SIZE, offset }),
+    [query, offset]
+  );
+
+  const moviesQuery = useQuery({
+    queryKey: ["movies", queryParams],
+    queryFn: () => fetchMovies(queryParams)
+  });
+
+  const data = moviesQuery.data;
+  const items = data?.items ?? [];
+  const total = data?.total ?? 0;
+  const hasPrevious = page > 0;
+  const hasNext = offset + PAGE_SIZE < total;
+
   return (
-    <section>
-      <h2>Movies</h2>
-      <p>Search, filters, and movie detail pages arrive in Phase 2.</p>
+    <section className="page">
+      <div className="page-header">
+        <h2>Movies</h2>
+        <p>Find what is playing now and pick a showtime.</p>
+      </div>
+
+      <div className="search-row">
+        <input
+          value={query}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setPage(0);
+          }}
+          placeholder="Search by title"
+          aria-label="Search movies"
+        />
+      </div>
+
+      {moviesQuery.isLoading && <p className="status">Loading movies...</p>}
+      {moviesQuery.isError && (
+        <p className="status error">
+          Failed to load movies. Ensure backend is running and try again.
+        </p>
+      )}
+
+      {!moviesQuery.isLoading && !moviesQuery.isError && items.length === 0 && (
+        <p className="status">No movies found for this search.</p>
+      )}
+
+      <div className="movie-grid">
+        {items.map((movie) => (
+          <article className="movie-card" key={movie.id}>
+            <div className="movie-poster-fallback">
+              {movie.poster_url ? (
+                <img src={movie.poster_url} alt={`${movie.title} poster`} />
+              ) : (
+                <span>{movie.title.slice(0, 1)}</span>
+              )}
+            </div>
+            <div className="movie-card-body">
+              <h3>{movie.title}</h3>
+              <p>
+                {movie.rating} • {movie.runtime_minutes} min
+              </p>
+              <Link to={`/movies/${movie.id}`}>View showtimes</Link>
+            </div>
+          </article>
+        ))}
+      </div>
+
+      <div className="pagination-row">
+        <button type="button" disabled={!hasPrevious} onClick={() => setPage((p) => p - 1)}>
+          Previous
+        </button>
+        <span>
+          Page {page + 1} • {total} total
+        </span>
+        <button type="button" disabled={!hasNext} onClick={() => setPage((p) => p + 1)}>
+          Next
+        </button>
+      </div>
     </section>
   );
 }

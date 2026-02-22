@@ -4,7 +4,7 @@ export function RouteErrorPage() {
   const error = useRouteError();
 
   let title = "Unexpected application error";
-  let detail = "Something went wrong while loading this page.";
+  let detail = "Something went wrong while loading this route.";
 
   if (isRouteErrorResponse(error)) {
     title = `${error.status} ${error.statusText}`;
@@ -24,6 +24,11 @@ export function RouteErrorPage() {
       <p>
         Return to <Link to="/">Home</Link>.
       </p>
+  return (
+    <section className="page">
+      <h2>{title}</h2>
+      <p className="status error">{detail}</p>
+      <Link to="/">Back to home</Link>
     </section>
   );
 }

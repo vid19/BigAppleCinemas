@@ -16,6 +16,8 @@ export default [
       },
       globals: {
         document: "readonly",
+        fetch: "readonly",
+        URL: "readonly",
         window: "readonly"
       }
     },
