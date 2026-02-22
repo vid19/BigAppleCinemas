@@ -7,6 +7,9 @@ from app.schemas.auth import (
     AuthUserRead,
 )
 from app.schemas.catalog import (
+    AuditoriumCreate,
+    AuditoriumListResponse,
+    AuditoriumRead,
     MovieCreate,
     MovieDetail,
     MovieListItem,
@@ -56,6 +59,9 @@ __all__ = [
     "AuthRegisterRequest",
     "AuthTokenResponse",
     "AuthUserRead",
+    "AuditoriumCreate",
+    "AuditoriumListResponse",
+    "AuditoriumRead",
     "MovieDetail",
     "MovieCreate",
     "MovieListItem",

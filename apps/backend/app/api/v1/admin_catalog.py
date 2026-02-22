@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +12,9 @@ from app.models.recommendation import MovieSimilarity, UserMovieEvent
 from app.models.reservation import Reservation, ReservationSeat, ShowtimeSeatStatus
 from app.models.showtime import Auditorium, Showtime, Theater
 from app.schemas.catalog import (
+    AuditoriumCreate,
+    AuditoriumListResponse,
+    AuditoriumRead,
     MovieCreate,
     MovieDetail,
     MovieUpdate,
@@ -22,7 +25,10 @@ from app.schemas.catalog import (
     TheaterRead,
     TheaterUpdate,
 )
-from app.services.seat_inventory import sync_showtime_seat_statuses
+from app.services.seat_inventory import (
+    ensure_auditorium_seat_inventory,
+    sync_showtime_seat_statuses,
+)
 
 router = APIRouter(dependencies=[Depends(require_admin_user)])
 
@@ -217,6 +223,68 @@ async def delete_theater(
         ) from exc
     await _invalidate_catalog_cache()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/auditoriums", response_model=AuditoriumListResponse)
+async def list_auditoriums(
+    theater_id: int | None = Query(default=None, ge=1),
+    limit: int = Query(default=100, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    session: AsyncSession = Depends(get_db_session),
+) -> AuditoriumListResponse:
+    filters = []
+    if theater_id is not None:
+        filters.append(Auditorium.theater_id == theater_id)
+
+    total_stmt = select(func.count(Auditorium.id))
+    if filters:
+        total_stmt = total_stmt.where(*filters)
+    total = (await session.execute(total_stmt)).scalar_one()
+
+    stmt = (
+        select(
+            Auditorium.id,
+            Auditorium.theater_id,
+            Theater.name.label("theater_name"),
+            Auditorium.name,
+            Auditorium.seatmap_id,
+        )
+        .join(Theater, Theater.id == Auditorium.theater_id)
+        .where(*filters)
+        .order_by(Theater.name.asc(), Auditorium.name.asc(), Auditorium.id.asc())
+        .offset(offset)
+        .limit(limit)
+    )
+    rows = (await session.execute(stmt)).mappings().all()
+    items = [AuditoriumRead.model_validate(row) for row in rows]
+    return AuditoriumListResponse(items=items, total=total, limit=limit, offset=offset)
+
+
+@router.post("/auditoriums", response_model=AuditoriumRead, status_code=status.HTTP_201_CREATED)
+async def create_auditorium(
+    payload: AuditoriumCreate,
+    session: AsyncSession = Depends(get_db_session),
+) -> AuditoriumRead:
+    theater = (
+        await session.execute(select(Theater).where(Theater.id == payload.theater_id))
+    ).scalar_one_or_none()
+    if theater is None:
+        raise HTTPException(status_code=404, detail="Theater not found")
+
+    auditorium = Auditorium(**payload.model_dump())
+    session.add(auditorium)
+    await session.flush()
+    await ensure_auditorium_seat_inventory(session, auditorium)
+    await session.commit()
+    await session.refresh(auditorium)
+
+    return AuditoriumRead(
+        id=auditorium.id,
+        theater_id=auditorium.theater_id,
+        theater_name=theater.name,
+        name=auditorium.name,
+        seatmap_id=auditorium.seatmap_id,
+    )
 
 
 @router.post("/showtimes", response_model=ShowtimeRead, status_code=status.HTTP_201_CREATED)

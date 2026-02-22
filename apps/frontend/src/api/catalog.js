@@ -210,6 +210,16 @@ export function deleteTheater(theaterId) {
   return request(`/admin/theaters/${theaterId}`, { method: "DELETE" });
 }
 
+export function fetchAdminAuditoriums({ theaterId, limit = 100, offset = 0 } = {}) {
+  return request("/admin/auditoriums", {
+    params: { theater_id: theaterId, limit, offset }
+  });
+}
+
+export function createAuditorium(payload) {
+  return request("/admin/auditoriums", { method: "POST", body: payload });
+}
+
 export function createShowtime(payload) {
   return request("/admin/showtimes", { method: "POST", body: payload });
 }

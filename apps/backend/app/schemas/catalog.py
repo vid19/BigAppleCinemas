@@ -51,6 +51,21 @@ class TheaterListResponse(BaseModel):
     offset: int
 
 
+class AuditoriumRead(BaseModel):
+    id: int
+    theater_id: int
+    theater_name: str
+    name: str
+    seatmap_id: int | None
+
+
+class AuditoriumListResponse(BaseModel):
+    items: list[AuditoriumRead]
+    total: int
+    limit: int
+    offset: int
+
+
 class ShowtimeRead(BaseModel):
     id: int
     movie_id: int
@@ -122,6 +137,12 @@ class TheaterUpdate(BaseModel):
     address: str | None = Field(default=None, min_length=1, max_length=500)
     city: str | None = Field(default=None, min_length=1, max_length=100)
     timezone: str | None = Field(default=None, min_length=1, max_length=50)
+
+
+class AuditoriumCreate(BaseModel):
+    theater_id: int = Field(ge=1)
+    name: str = Field(min_length=1, max_length=100)
+    seatmap_id: int | None = Field(default=None, ge=1)
 
 
 class ShowtimeCreate(BaseModel):

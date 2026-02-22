@@ -57,9 +57,43 @@ def test_admin_movie_crud_flow(client: TestClient) -> None:
     assert delete_response.status_code == 204
 
 
+def test_admin_auditorium_create_and_list(client: TestClient) -> None:
+    theater_response = client.post(
+        "/api/admin/theaters",
+        json={
+            "name": "Integration Theater",
+            "address": "200 Test Ave",
+            "city": "New York",
+            "timezone": "America/New_York",
+        },
+    )
+    assert theater_response.status_code == 201
+    theater_id = theater_response.json()["id"]
+
+    create_auditorium_response = client.post(
+        "/api/admin/auditoriums",
+        json={"theater_id": theater_id, "name": "Hall A"},
+    )
+    assert create_auditorium_response.status_code == 201
+    created = create_auditorium_response.json()
+    assert created["theater_id"] == theater_id
+    assert created["name"] == "Hall A"
+
+    list_response = client.get(
+        "/api/admin/auditoriums",
+        params={"theater_id": theater_id, "limit": 20, "offset": 0},
+    )
+    assert list_response.status_code == 200
+    assert list_response.json()["total"] >= 1
+    assert any(item["id"] == created["id"] for item in list_response.json()["items"])
+
+
 def test_admin_showtime_crud_flow(client: TestClient) -> None:
     movies_response = client.get("/api/movies", params={"limit": 1, "offset": 0})
     movie_id = movies_response.json()["items"][0]["id"]
+    auditoriums_response = client.get("/api/admin/auditoriums", params={"limit": 1, "offset": 0})
+    assert auditoriums_response.status_code == 200
+    auditorium_id = auditoriums_response.json()["items"][0]["id"]
 
     starts_at = datetime.now(tz=UTC).replace(microsecond=0) + timedelta(hours=12)
     ends_at = starts_at + timedelta(hours=2)
@@ -68,7 +102,7 @@ def test_admin_showtime_crud_flow(client: TestClient) -> None:
         "/api/admin/showtimes",
         json={
             "movie_id": movie_id,
-            "auditorium_id": 1,
+            "auditorium_id": auditorium_id,
             "starts_at": starts_at.isoformat(),
             "ends_at": ends_at.isoformat(),
             "status": "SCHEDULED",
@@ -100,6 +134,9 @@ def test_showtimes_hide_past_by_default(client: TestClient) -> None:
     )
     assert create_movie_response.status_code == 201
     movie_id = create_movie_response.json()["id"]
+    auditoriums_response = client.get("/api/admin/auditoriums", params={"limit": 1, "offset": 0})
+    assert auditoriums_response.status_code == 200
+    auditorium_id = auditoriums_response.json()["items"][0]["id"]
 
     now = datetime.now(tz=UTC).replace(microsecond=0)
     past_starts_at = now - timedelta(hours=5)
@@ -109,7 +146,7 @@ def test_showtimes_hide_past_by_default(client: TestClient) -> None:
         "/api/admin/showtimes",
         json={
             "movie_id": movie_id,
-            "auditorium_id": 1,
+            "auditorium_id": auditorium_id,
             "starts_at": past_starts_at.isoformat(),
             "ends_at": (past_starts_at + timedelta(hours=2)).isoformat(),
             "status": "SCHEDULED",
@@ -122,7 +159,7 @@ def test_showtimes_hide_past_by_default(client: TestClient) -> None:
         "/api/admin/showtimes",
         json={
             "movie_id": movie_id,
-            "auditorium_id": 1,
+            "auditorium_id": auditorium_id,
             "starts_at": future_starts_at.isoformat(),
             "ends_at": (future_starts_at + timedelta(hours=2)).isoformat(),
             "status": "SCHEDULED",
@@ -166,6 +203,9 @@ def test_movie_delete_cascades_unbooked_showtimes(client: TestClient) -> None:
     )
     assert create_movie_response.status_code == 201
     movie_id = create_movie_response.json()["id"]
+    auditoriums_response = client.get("/api/admin/auditoriums", params={"limit": 1, "offset": 0})
+    assert auditoriums_response.status_code == 200
+    auditorium_id = auditoriums_response.json()["items"][0]["id"]
 
     starts_at = datetime.now(tz=UTC).replace(microsecond=0) + timedelta(hours=10)
     ends_at = starts_at + timedelta(hours=2)
@@ -173,7 +213,7 @@ def test_movie_delete_cascades_unbooked_showtimes(client: TestClient) -> None:
         "/api/admin/showtimes",
         json={
             "movie_id": movie_id,
-            "auditorium_id": 1,
+            "auditorium_id": auditorium_id,
             "starts_at": starts_at.isoformat(),
             "ends_at": ends_at.isoformat(),
             "status": "SCHEDULED",
@@ -204,6 +244,9 @@ def test_movie_delete_rejected_when_orders_exist(client: TestClient) -> None:
     )
     assert create_movie_response.status_code == 201
     movie_id = create_movie_response.json()["id"]
+    auditoriums_response = client.get("/api/admin/auditoriums", params={"limit": 1, "offset": 0})
+    assert auditoriums_response.status_code == 200
+    auditorium_id = auditoriums_response.json()["items"][0]["id"]
 
     starts_at = datetime.now(tz=UTC).replace(microsecond=0) + timedelta(hours=11)
     ends_at = starts_at + timedelta(hours=2)
@@ -211,7 +254,7 @@ def test_movie_delete_rejected_when_orders_exist(client: TestClient) -> None:
         "/api/admin/showtimes",
         json={
             "movie_id": movie_id,
-            "auditorium_id": 1,
+            "auditorium_id": auditorium_id,
             "starts_at": starts_at.isoformat(),
             "ends_at": ends_at.isoformat(),
             "status": "SCHEDULED",
