@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user_id
 from app.core.config import settings
+from app.core.metrics import increment_metric
 from app.core.rate_limit import create_rate_limiter
 from app.db.session import get_db_session
 from app.schemas.payment import (
@@ -37,13 +38,16 @@ async def create_checkout_session(
     _: None = Depends(checkout_session_rate_limiter),
     user_id: int = Depends(get_current_user_id),
 ) -> CheckoutSessionRead:
+    increment_metric("checkout_session_attempt_total")
     async with session.begin():
-        return await payment_service.create_checkout_session(
+        checkout_session = await payment_service.create_checkout_session(
             session,
             user_id=user_id,
             reservation_id=payload.reservation_id,
             provider=payload.provider,
         )
+    increment_metric("checkout_session_success_total")
+    return checkout_session
 
 
 @checkout_router.post("/demo/confirm", response_model=CheckoutFinalizeRead)
@@ -58,7 +62,10 @@ async def confirm_demo_checkout(
             order_id=payload.order_id,
             user_id=user_id,
         )
-        return await payment_service.finalize_paid_order(session, order=order)
+        finalized = await payment_service.finalize_paid_order(session, order=order)
+    if finalized.order_status == "PAID":
+        increment_metric("checkout_finalize_success_total")
+    return finalized
 
 
 @webhook_router.post("/stripe", response_model=StripeWebhookAck)
@@ -106,6 +113,8 @@ async def stripe_webhook(
             )
 
         finalized = await payment_service.finalize_paid_order(session, order=order)
+        if finalized.order_status == "PAID":
+            increment_metric("checkout_finalize_success_total")
         return StripeWebhookAck(
             acknowledged=True,
             duplicate=False,

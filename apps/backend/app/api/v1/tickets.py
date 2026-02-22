@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import AuthenticatedUser, require_admin_user
 from app.core.config import settings
+from app.core.metrics import increment_metric
 from app.core.rate_limit import create_rate_limiter
 from app.db.session import get_db_session
 from app.models.order import Order, Ticket
@@ -31,6 +32,7 @@ async def scan_ticket(
     if staff_token != settings.staff_scan_token:
         raise HTTPException(status_code=401, detail="Invalid staff scan token")
 
+    increment_metric("ticket_scan_attempt_total")
     async with session.begin():
         row = (
             await session.execute(
@@ -43,6 +45,7 @@ async def scan_ticket(
         ).first()
 
         if row is None:
+            increment_metric("ticket_scan_invalid_total")
             return TicketScanResponse(
                 result="INVALID",
                 message="Ticket not found",
@@ -50,6 +53,7 @@ async def scan_ticket(
 
         ticket, showtime_id, seat_code = row
         if ticket.status == "USED":
+            increment_metric("ticket_scan_already_used_total")
             return TicketScanResponse(
                 result="ALREADY_USED",
                 ticket_id=ticket.id,
@@ -60,6 +64,7 @@ async def scan_ticket(
                 message="Ticket has already been used",
             )
         if ticket.status != "VALID":
+            increment_metric("ticket_scan_invalid_total")
             return TicketScanResponse(
                 result="INVALID",
                 ticket_id=ticket.id,
@@ -73,6 +78,7 @@ async def scan_ticket(
         ticket.status = "USED"
         ticket.used_at = datetime.now(tz=UTC)
         await session.flush()
+        increment_metric("ticket_scan_valid_total")
         return TicketScanResponse(
             result="VALID",
             ticket_id=ticket.id,

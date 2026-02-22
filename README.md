@@ -39,6 +39,7 @@ Services:
 - Frontend: `http://localhost:5173`
 - Backend API: `http://localhost:8000`
 - Health: `http://localhost:8000/health`
+- Metrics: `http://localhost:8000/metrics`
 
 Demo admin login (local bootstrap):
 

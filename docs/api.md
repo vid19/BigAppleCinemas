@@ -79,3 +79,4 @@ Base URL: `http://localhost:8000/api`
 ## Health
 
 - `GET /health` (outside `/api`)
+- `GET /metrics` (outside `/api`, Prometheus-format counters)
