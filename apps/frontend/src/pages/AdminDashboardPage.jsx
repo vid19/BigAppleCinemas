@@ -44,7 +44,18 @@ function todayLocalDate() {
 
 export function AdminDashboardPage() {
   const queryClient = useQueryClient();
-  const [feedback, setFeedback] = useState("");
+  const [toast, setToast] = useState(null);
+
+  const showSuccessToast = (message) => {
+    setToast({ type: "success", message });
+  };
+
+  const showErrorToast = (error) => {
+    setToast({
+      type: "error",
+      message: error?.message || "Request failed. Please try again."
+    });
+  };
 
   const [movieForm, setMovieForm] = useState({
     title: "",
@@ -124,10 +135,20 @@ export function AdminDashboardPage() {
     queryClient.invalidateQueries({ queryKey: ["admin-sales-report"] });
   };
 
+  useEffect(() => {
+    if (!toast) {
+      return undefined;
+    }
+    const timeout = window.setTimeout(() => {
+      setToast(null);
+    }, 5000);
+    return () => window.clearTimeout(timeout);
+  }, [toast]);
+
   const createMovieMutation = useMutation({
     mutationFn: createMovie,
     onSuccess: () => {
-      setFeedback("Movie created.");
+      showSuccessToast("Movie created.");
       setMovieForm((prev) => ({
         ...prev,
         title: "",
@@ -137,87 +158,87 @@ export function AdminDashboardPage() {
       }));
       refreshQueries();
     },
-    onError: (error) => setFeedback(error.message)
+    onError: showErrorToast
   });
 
   const deleteMovieMutation = useMutation({
     mutationFn: deleteMovie,
     onSuccess: () => {
-      setFeedback("Movie deleted.");
+      showSuccessToast("Movie deleted.");
       refreshQueries();
     },
-    onError: (error) => setFeedback(error.message)
+    onError: showErrorToast
   });
   const updateMovieMutation = useMutation({
     mutationFn: ({ movieId, payload }) => updateMovie(movieId, payload),
     onSuccess: () => {
-      setFeedback("Movie updated.");
+      showSuccessToast("Movie updated.");
       setEditingMovieId(null);
       refreshQueries();
     },
-    onError: (error) => setFeedback(error.message)
+    onError: showErrorToast
   });
 
   const createTheaterMutation = useMutation({
     mutationFn: createTheater,
     onSuccess: () => {
-      setFeedback("Theater created.");
+      showSuccessToast("Theater created.");
       setTheaterForm((prev) => ({ ...prev, name: "", address: "" }));
       refreshQueries();
     },
-    onError: (error) => setFeedback(error.message)
+    onError: showErrorToast
   });
   const deleteTheaterMutation = useMutation({
     mutationFn: deleteTheater,
     onSuccess: () => {
-      setFeedback("Theater deleted.");
+      showSuccessToast("Theater deleted.");
       refreshQueries();
     },
-    onError: (error) => setFeedback(error.message)
+    onError: showErrorToast
   });
   const createAuditoriumMutation = useMutation({
     mutationFn: createAuditorium,
     onSuccess: () => {
-      setFeedback("Auditorium created.");
+      showSuccessToast("Auditorium created.");
       setAuditoriumForm((prev) => ({ ...prev, name: "" }));
       refreshQueries();
     },
-    onError: (error) => setFeedback(error.message)
+    onError: showErrorToast
   });
   const updateTheaterMutation = useMutation({
     mutationFn: ({ theaterId, payload }) => updateTheater(theaterId, payload),
     onSuccess: () => {
-      setFeedback("Theater updated.");
+      showSuccessToast("Theater updated.");
       setEditingTheaterId(null);
       refreshQueries();
     },
-    onError: (error) => setFeedback(error.message)
+    onError: showErrorToast
   });
 
   const createShowtimeMutation = useMutation({
     mutationFn: createShowtime,
     onSuccess: () => {
-      setFeedback("Showtime created.");
+      showSuccessToast("Showtime created.");
       refreshQueries();
     },
-    onError: (error) => setFeedback(error.message)
+    onError: showErrorToast
   });
   const deleteShowtimeMutation = useMutation({
     mutationFn: deleteShowtime,
     onSuccess: () => {
-      setFeedback("Showtime deleted.");
+      showSuccessToast("Showtime deleted.");
       refreshQueries();
     },
-    onError: (error) => setFeedback(error.message)
+    onError: showErrorToast
   });
   const updateShowtimeMutation = useMutation({
     mutationFn: ({ showtimeId, payload }) => updateShowtime(showtimeId, payload),
     onSuccess: () => {
-      setFeedback("Showtime updated.");
+      showSuccessToast("Showtime updated.");
       setEditingShowtimeId(null);
       refreshQueries();
     },
-    onError: (error) => setFeedback(error.message)
+    onError: showErrorToast
   });
 
   const movieItems = moviesQuery.data?.items ?? [];
@@ -259,12 +280,22 @@ export function AdminDashboardPage() {
 
   return (
     <section className="page page-shell admin-dashboard-page">
+      {toast && (
+        <div
+          aria-live="polite"
+          className={`admin-toast admin-toast-${toast.type}`}
+          role={toast.type === "error" ? "alert" : "status"}
+        >
+          <span>{toast.message}</span>
+          <button aria-label="Dismiss notification" onClick={() => setToast(null)} type="button">
+            Dismiss
+          </button>
+        </div>
+      )}
       <div className="page-header page-header-modern">
         <h2>Admin Dashboard</h2>
         <p>Manage catalog entities for demo environments.</p>
       </div>
-
-      {feedback && <p className="status">{feedback}</p>}
 
       <article className="admin-card admin-sales-card">
         <h3>Sales snapshot</h3>
