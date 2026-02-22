@@ -408,6 +408,16 @@ body {
   text-transform: uppercase;
 }
 
+.seat-hold-pill {
+  margin-top: 0.65rem;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 999px;
+  display: inline-flex;
+  padding: 0.24rem 0.58rem;
+  font-weight: 700;
+}
+
 .seat-layout-wrap {
   display: grid;
   gap: 1rem;

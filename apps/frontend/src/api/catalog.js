@@ -51,6 +51,18 @@ export function fetchShowtimeSeats(showtimeId) {
   return request(`/showtimes/${showtimeId}/seats`);
 }
 
+export function createReservation(payload) {
+  return request("/reservations", { method: "POST", body: payload });
+}
+
+export function fetchReservation(reservationId) {
+  return request(`/reservations/${reservationId}`);
+}
+
+export function cancelReservation(reservationId) {
+  return request(`/reservations/${reservationId}`, { method: "DELETE" });
+}
+
 export function fetchTheaters({ city = "", limit = 100, offset = 0 } = {}) {
   return request("/theaters", {
     params: { city, limit, offset }

@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 
-import { fetchShowtimeSeats } from "../api/catalog";
+import { cancelReservation, createReservation, fetchShowtimeSeats } from "../api/catalog";
 
 function formatDateTime(dateValue) {
   return new Date(dateValue).toLocaleString([], {
@@ -20,12 +20,42 @@ function countByStatus(seats, status) {
 export function SeatSelectionPage() {
   const { showtimeId } = useParams();
   const [selectedSeatIds, setSelectedSeatIds] = useState([]);
+  const [reservation, setReservation] = useState(null);
+  const [feedback, setFeedback] = useState("");
+  const [nowMs, setNowMs] = useState(Date.now());
 
   const parsedShowtimeId = Number(showtimeId);
   const seatsQuery = useQuery({
     queryKey: ["showtime-seats", parsedShowtimeId],
     queryFn: () => fetchShowtimeSeats(parsedShowtimeId),
-    enabled: Number.isFinite(parsedShowtimeId)
+    enabled: Number.isFinite(parsedShowtimeId),
+    refetchInterval: 4000
+  });
+  const { refetch } = seatsQuery;
+
+  const createReservationMutation = useMutation({
+    mutationFn: createReservation,
+    onSuccess: (payload) => {
+      setReservation(payload);
+      setSelectedSeatIds(payload.seat_ids ?? []);
+      setFeedback("Seats are held. Complete checkout before the timer expires.");
+      refetch();
+    },
+    onError: (error) => {
+      setFeedback(error.message);
+      refetch();
+    }
+  });
+
+  const cancelReservationMutation = useMutation({
+    mutationFn: cancelReservation,
+    onSuccess: () => {
+      setFeedback("Seat hold released.");
+      setReservation(null);
+      setSelectedSeatIds([]);
+      refetch();
+    },
+    onError: (error) => setFeedback(error.message)
   });
 
   const seatData = seatsQuery.data;
@@ -42,6 +72,33 @@ export function SeatSelectionPage() {
     const selectedSet = new Set(selectedSeatIds);
     return seats.filter((seat) => selectedSet.has(seat.seat_id));
   }, [seats, selectedSeatIds]);
+
+  const activeHold = reservation?.status === "ACTIVE";
+  const remainingSeconds = useMemo(() => {
+    if (!activeHold || !reservation?.expires_at) {
+      return 0;
+    }
+    return Math.max(0, Math.floor((new Date(reservation.expires_at).getTime() - nowMs) / 1000));
+  }, [activeHold, nowMs, reservation?.expires_at]);
+
+  useEffect(() => {
+    if (!activeHold) {
+      return undefined;
+    }
+    const intervalId = window.setInterval(() => {
+      setNowMs(Date.now());
+    }, 1000);
+    return () => window.clearInterval(intervalId);
+  }, [activeHold]);
+
+  useEffect(() => {
+    if (activeHold && remainingSeconds === 0) {
+      setReservation((previous) => (previous ? { ...previous, status: "EXPIRED" } : previous));
+      setFeedback("Your hold expired. Select seats again.");
+      setSelectedSeatIds([]);
+      refetch();
+    }
+  }, [activeHold, remainingSeconds, refetch]);
 
   if (!Number.isFinite(parsedShowtimeId)) {
     return <p className="status error">Invalid showtime URL.</p>;
@@ -69,6 +126,9 @@ export function SeatSelectionPage() {
   const availableCount = countByStatus(seats, "AVAILABLE");
   const heldCount = countByStatus(seats, "HELD");
   const soldCount = countByStatus(seats, "SOLD");
+  const holdTimerText = `${Math.floor(remainingSeconds / 60)
+    .toString()
+    .padStart(2, "0")}:${(remainingSeconds % 60).toString().padStart(2, "0")}`;
 
   return (
     <section className="page seat-page">
@@ -79,6 +139,9 @@ export function SeatSelectionPage() {
           {seatData.theater_name} • {formatDateTime(seatData.starts_at)}
         </p>
         <p className="seat-layout-label">Screen this way</p>
+        {activeHold && (
+          <p className="seat-hold-pill">Hold expires in {holdTimerText}</p>
+        )}
       </div>
 
       <div className="seat-layout-wrap">
@@ -117,7 +180,7 @@ export function SeatSelectionPage() {
                     className={`seat-button ${seat.status.toLowerCase()} ${
                       isSelected ? "selected" : ""
                     }`}
-                    disabled={!isSelectable}
+                    disabled={!isSelectable || activeHold}
                     title={`${seat.seat_code} • ${seat.seat_type}`}
                     onClick={() => {
                       if (!isSelectable) {
@@ -148,14 +211,31 @@ export function SeatSelectionPage() {
           </p>
           <div className="seat-summary-actions">
             <Link to={`/movies/${seatData.movie_id}`}>Back to showtimes</Link>
-            <button type="button" disabled={selectedSeatDetails.length === 0}>
-              Continue to hold
-            </button>
+            {!activeHold && (
+              <button
+                type="button"
+                disabled={selectedSeatDetails.length === 0 || createReservationMutation.isPending}
+                onClick={() =>
+                  createReservationMutation.mutate({
+                    showtime_id: seatData.showtime_id,
+                    seat_ids: selectedSeatDetails.map((seat) => seat.seat_id)
+                  })
+                }
+              >
+                {createReservationMutation.isPending ? "Holding..." : "Hold seats"}
+              </button>
+            )}
+            {activeHold && (
+              <button
+                type="button"
+                disabled={cancelReservationMutation.isPending}
+                onClick={() => cancelReservationMutation.mutate(reservation.id)}
+              >
+                {cancelReservationMutation.isPending ? "Releasing..." : "Release hold"}
+              </button>
+            )}
           </div>
-          <p className="status">
-            Hold + checkout finalize in the next milestone. This screen now reflects live seat
-            inventory from the backend.
-          </p>
+          <p className="status">{feedback || "Select seats and start a timed hold."}</p>
         </aside>
       </div>
     </section>

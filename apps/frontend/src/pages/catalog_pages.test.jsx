@@ -7,10 +7,12 @@ import { MoviesPage } from "./MoviesPage";
 import { SeatSelectionPage } from "./SeatSelectionPage";
 
 const useQueryMock = vi.fn();
+const useMutationMock = vi.fn();
 let paramsMock = { movieId: "3" };
 
 vi.mock("@tanstack/react-query", () => ({
-  useQuery: (options) => useQueryMock(options)
+  useQuery: (options) => useQueryMock(options),
+  useMutation: (options) => useMutationMock(options)
 }));
 
 vi.mock("react-router-dom", async () => {
@@ -28,6 +30,11 @@ function renderPage(element) {
 beforeEach(() => {
   paramsMock = { movieId: "3" };
   useQueryMock.mockReset();
+  useMutationMock.mockReset();
+  useMutationMock.mockReturnValue({
+    mutate: vi.fn(),
+    isPending: false
+  });
 });
 
 afterEach(() => {
@@ -161,6 +168,6 @@ describe("catalog pages", () => {
     expect(html).toContain("Select your seats");
     expect(html).toContain("Booking summary");
     expect(html).toContain("A1");
-    expect(html).toContain("Continue to hold");
+    expect(html).toContain("Hold seats");
   });
 });
