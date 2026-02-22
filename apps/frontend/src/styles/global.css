@@ -350,13 +350,186 @@ body {
 }
 
 .admin-list li {
+  display: grid;
+  gap: 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.5rem 0.6rem;
+}
+
+.admin-list-main {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
+}
+
+.admin-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.admin-inline-form {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.seat-page {
+  display: grid;
+  gap: 1rem;
+}
+
+.seat-stage-card {
+  background: linear-gradient(150deg, #102d56 0%, #1d4f8f 55%, #2e6ab5 100%);
+  color: #f6f9ff;
+  border-radius: 14px;
+  padding: 1rem;
+}
+
+.seat-stage-card h2 {
+  margin: 0.3rem 0;
+  font-size: 1.8rem;
+}
+
+.seat-stage-card p {
+  margin: 0;
+}
+
+.seat-layout-label {
+  margin-top: 0.75rem;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+  display: inline-flex;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.seat-layout-wrap {
+  display: grid;
+  gap: 1rem;
+}
+
+.seat-layout-panel,
+.seat-summary-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.85rem;
+}
+
+.seat-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.75rem;
+  margin-bottom: 0.8rem;
+}
+
+.seat-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--ink-muted);
+  font-size: 0.9rem;
+}
+
+.seat-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.seat-dot.available {
+  background: #d4efe2;
+}
+
+.seat-dot.held {
+  background: #fce6b6;
+}
+
+.seat-dot.sold {
+  background: #f6c7c5;
+}
+
+.seat-dot.selected {
+  background: #245ea8;
+}
+
+.seat-grid-wrap {
+  overflow-x: auto;
+}
+
+.seat-grid {
+  display: grid;
+  gap: 0.4rem;
+  min-width: 560px;
+}
+
+.seat-button {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #d4efe2;
+  color: #184f39;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.4rem 0.1rem;
+  cursor: pointer;
+}
+
+.seat-button.held {
+  background: #fce6b6;
+  color: #7f5a15;
+  cursor: not-allowed;
+}
+
+.seat-button.sold {
+  background: #f6c7c5;
+  color: #7d1f1a;
+  cursor: not-allowed;
+}
+
+.seat-button.selected {
+  background: #21589d;
+  color: #fff;
+  border-color: #21589d;
+}
+
+.seat-summary-card h3 {
+  margin: 0 0 0.5rem;
+}
+
+.seat-summary-card p {
+  margin: 0.35rem 0;
+}
+
+.seat-summary-actions {
+  margin-top: 0.8rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.seat-summary-actions a {
+  color: var(--brand);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.seat-summary-actions button {
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 0.5rem 0.6rem;
+  background: var(--brand-soft);
+  color: var(--brand);
+  font-weight: 700;
+  padding: 0.5rem 0.7rem;
+}
+
+.seat-summary-actions button:disabled {
+  opacity: 0.45;
 }
 
 @media (min-width: 768px) {
@@ -370,5 +543,10 @@ body {
 
   .hero-card h2 {
     font-size: 2.3rem;
+  }
+
+  .seat-layout-wrap {
+    grid-template-columns: 2fr 1fr;
+    align-items: start;
   }
 }

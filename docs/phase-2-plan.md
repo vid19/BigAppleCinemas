@@ -99,6 +99,5 @@ Completed:
 
 Remaining in Phase 2:
 
-- Add frontend UI coverage for update/edit admin actions.
-- Expand frontend component-level tests beyond API client layer.
-- Add API usage screenshots and concise performance notes to docs.
+- No open engineering tasks. Phase 2 deliverables were completed and merged.
+- Screenshots/performance snapshots can be appended as optional recruiter packaging updates.

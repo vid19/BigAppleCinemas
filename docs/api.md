@@ -11,6 +11,8 @@ Base URL: `http://localhost:8000/api`
   - Query: `city`, `limit`, `offset`
 - `GET /showtimes`
   - Query: `movie_id`, `theater_id`, `date`, `limit`, `offset`
+- `GET /showtimes/{showtime_id}/seats`
+  - Returns seat map metadata + per-seat showtime status (`AVAILABLE`, `HELD`, `SOLD`)
 
 ## Auth (Scaffold)
 

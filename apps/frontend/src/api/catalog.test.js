@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createMovie, deleteMovie, fetchMovies } from "./catalog";
+import { createMovie, deleteMovie, fetchMovies, fetchShowtimeSeats } from "./catalog";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -40,6 +40,21 @@ describe("catalog api client", () => {
     const [requestUrl, requestOptions] = fetchMock.mock.calls[0];
     expect(requestUrl).toContain("/api/admin/movies/42");
     expect(requestOptions.method).toBe("DELETE");
+  });
+
+  it("requests seat inventory for a showtime", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ showtime_id: 7, seats: [] })
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await fetchShowtimeSeats(7);
+
+    expect(result.showtime_id).toBe(7);
+    const [requestUrl] = fetchMock.mock.calls[0];
+    expect(requestUrl).toContain("/api/showtimes/7/seats");
   });
 
   it("surfaces api detail in thrown errors", async () => {

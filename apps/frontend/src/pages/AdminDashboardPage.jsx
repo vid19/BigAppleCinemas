@@ -10,7 +10,10 @@ import {
   deleteTheater,
   fetchMovies,
   fetchShowtimes,
-  fetchTheaters
+  fetchTheaters,
+  updateMovie,
+  updateShowtime,
+  updateTheater
 } from "../api/catalog";
 
 function toIsoFromLocalDateTime(value) {
@@ -49,6 +52,22 @@ export function AdminDashboardPage() {
     auditorium_id: 1,
     starts_at: nowLocalInput(4),
     ends_at: nowLocalInput(6),
+    status: "SCHEDULED"
+  });
+  const [editingMovieId, setEditingMovieId] = useState(null);
+  const [movieEditForm, setMovieEditForm] = useState({
+    title: "",
+    runtime_minutes: 120,
+    rating: "PG-13"
+  });
+  const [editingTheaterId, setEditingTheaterId] = useState(null);
+  const [theaterEditForm, setTheaterEditForm] = useState({
+    name: "",
+    city: "",
+    timezone: ""
+  });
+  const [editingShowtimeId, setEditingShowtimeId] = useState(null);
+  const [showtimeEditForm, setShowtimeEditForm] = useState({
     status: "SCHEDULED"
   });
 
@@ -93,12 +112,22 @@ export function AdminDashboardPage() {
     },
     onError: (error) => setFeedback(error.message)
   });
+  const updateMovieMutation = useMutation({
+    mutationFn: ({ movieId, payload }) => updateMovie(movieId, payload),
+    onSuccess: () => {
+      setFeedback("Movie updated.");
+      setEditingMovieId(null);
+      refreshQueries();
+    },
+    onError: (error) => setFeedback(error.message)
+  });
 
   const createTheaterMutation = useMutation({
     mutationFn: createTheater,
     onSuccess: () => {
       setFeedback("Theater created.");
       setTheaterForm((prev) => ({ ...prev, name: "", address: "" }));
+      refreshQueries();
     },
     onError: (error) => setFeedback(error.message)
   });
@@ -106,6 +135,15 @@ export function AdminDashboardPage() {
     mutationFn: deleteTheater,
     onSuccess: () => {
       setFeedback("Theater deleted.");
+      refreshQueries();
+    },
+    onError: (error) => setFeedback(error.message)
+  });
+  const updateTheaterMutation = useMutation({
+    mutationFn: ({ theaterId, payload }) => updateTheater(theaterId, payload),
+    onSuccess: () => {
+      setFeedback("Theater updated.");
+      setEditingTheaterId(null);
       refreshQueries();
     },
     onError: (error) => setFeedback(error.message)
@@ -123,6 +161,15 @@ export function AdminDashboardPage() {
     mutationFn: deleteShowtime,
     onSuccess: () => {
       setFeedback("Showtime deleted.");
+      refreshQueries();
+    },
+    onError: (error) => setFeedback(error.message)
+  });
+  const updateShowtimeMutation = useMutation({
+    mutationFn: ({ showtimeId, payload }) => updateShowtime(showtimeId, payload),
+    onSuccess: () => {
+      setFeedback("Showtime updated.");
+      setEditingShowtimeId(null);
       refreshQueries();
     },
     onError: (error) => setFeedback(error.message)
@@ -313,16 +360,81 @@ export function AdminDashboardPage() {
             <ul className="admin-list">
               {movieItems.map((movie) => (
                 <li key={movie.id}>
-                  <span>
-                    #{movie.id} {movie.title}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => deleteMovieMutation.mutate(movie.id)}
-                    disabled={deleteMovieMutation.isPending}
-                  >
-                    Delete
-                  </button>
+                  <div className="admin-list-main">
+                    <span>
+                      #{movie.id} {movie.title}
+                    </span>
+                    <div className="admin-actions">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingMovieId(movie.id);
+                          setMovieEditForm({
+                            title: movie.title,
+                            runtime_minutes: movie.runtime_minutes,
+                            rating: movie.rating
+                          });
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteMovieMutation.mutate(movie.id)}
+                        disabled={deleteMovieMutation.isPending}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                  {editingMovieId === movie.id && (
+                    <form
+                      className="admin-inline-form"
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        updateMovieMutation.mutate({
+                          movieId: movie.id,
+                          payload: {
+                            title: movieEditForm.title,
+                            runtime_minutes: Number(movieEditForm.runtime_minutes),
+                            rating: movieEditForm.rating
+                          }
+                        });
+                      }}
+                    >
+                      <input
+                        value={movieEditForm.title}
+                        onChange={(event) =>
+                          setMovieEditForm((prev) => ({ ...prev, title: event.target.value }))
+                        }
+                      />
+                      <input
+                        type="number"
+                        min={1}
+                        value={movieEditForm.runtime_minutes}
+                        onChange={(event) =>
+                          setMovieEditForm((prev) => ({
+                            ...prev,
+                            runtime_minutes: Number(event.target.value)
+                          }))
+                        }
+                      />
+                      <input
+                        value={movieEditForm.rating}
+                        onChange={(event) =>
+                          setMovieEditForm((prev) => ({ ...prev, rating: event.target.value }))
+                        }
+                      />
+                      <div className="admin-actions">
+                        <button type="submit" disabled={updateMovieMutation.isPending}>
+                          Save
+                        </button>
+                        <button type="button" onClick={() => setEditingMovieId(null)}>
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  )}
                 </li>
               ))}
             </ul>
@@ -337,16 +449,79 @@ export function AdminDashboardPage() {
             <ul className="admin-list">
               {theaterItems.map((theater) => (
                 <li key={theater.id}>
-                  <span>
-                    #{theater.id} {theater.name} ({theater.city})
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => deleteTheaterMutation.mutate(theater.id)}
-                    disabled={deleteTheaterMutation.isPending}
-                  >
-                    Delete
-                  </button>
+                  <div className="admin-list-main">
+                    <span>
+                      #{theater.id} {theater.name} ({theater.city})
+                    </span>
+                    <div className="admin-actions">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingTheaterId(theater.id);
+                          setTheaterEditForm({
+                            name: theater.name,
+                            city: theater.city,
+                            timezone: theater.timezone
+                          });
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteTheaterMutation.mutate(theater.id)}
+                        disabled={deleteTheaterMutation.isPending}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                  {editingTheaterId === theater.id && (
+                    <form
+                      className="admin-inline-form"
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        updateTheaterMutation.mutate({
+                          theaterId: theater.id,
+                          payload: {
+                            name: theaterEditForm.name,
+                            city: theaterEditForm.city,
+                            timezone: theaterEditForm.timezone
+                          }
+                        });
+                      }}
+                    >
+                      <input
+                        value={theaterEditForm.name}
+                        onChange={(event) =>
+                          setTheaterEditForm((prev) => ({ ...prev, name: event.target.value }))
+                        }
+                      />
+                      <input
+                        value={theaterEditForm.city}
+                        onChange={(event) =>
+                          setTheaterEditForm((prev) => ({ ...prev, city: event.target.value }))
+                        }
+                      />
+                      <input
+                        value={theaterEditForm.timezone}
+                        onChange={(event) =>
+                          setTheaterEditForm((prev) => ({
+                            ...prev,
+                            timezone: event.target.value
+                          }))
+                        }
+                      />
+                      <div className="admin-actions">
+                        <button type="submit" disabled={updateTheaterMutation.isPending}>
+                          Save
+                        </button>
+                        <button type="button" onClick={() => setEditingTheaterId(null)}>
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  )}
                 </li>
               ))}
             </ul>
@@ -361,16 +536,59 @@ export function AdminDashboardPage() {
             <ul className="admin-list">
               {showtimeItems.map((showtime) => (
                 <li key={showtime.id}>
-                  <span>
-                    #{showtime.id} {showtime.theater_name} ({showtime.status})
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => deleteShowtimeMutation.mutate(showtime.id)}
-                    disabled={deleteShowtimeMutation.isPending}
-                  >
-                    Delete
-                  </button>
+                  <div className="admin-list-main">
+                    <span>
+                      #{showtime.id} {showtime.theater_name} ({showtime.status})
+                    </span>
+                    <div className="admin-actions">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingShowtimeId(showtime.id);
+                          setShowtimeEditForm({ status: showtime.status });
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteShowtimeMutation.mutate(showtime.id)}
+                        disabled={deleteShowtimeMutation.isPending}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                  {editingShowtimeId === showtime.id && (
+                    <form
+                      className="admin-inline-form"
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        updateShowtimeMutation.mutate({
+                          showtimeId: showtime.id,
+                          payload: { status: showtimeEditForm.status }
+                        });
+                      }}
+                    >
+                      <input
+                        value={showtimeEditForm.status}
+                        onChange={(event) =>
+                          setShowtimeEditForm((prev) => ({
+                            ...prev,
+                            status: event.target.value
+                          }))
+                        }
+                      />
+                      <div className="admin-actions">
+                        <button type="submit" disabled={updateShowtimeMutation.isPending}>
+                          Save
+                        </button>
+                        <button type="button" onClick={() => setEditingShowtimeId(null)}>
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  )}
                 </li>
               ))}
             </ul>
