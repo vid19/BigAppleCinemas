@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, Field
 
@@ -51,6 +51,24 @@ class MyOrderItem(BaseModel):
 
 class MyOrderListResponse(BaseModel):
     items: list[MyOrderItem]
+    total: int
+
+
+class MovieRecommendationItem(BaseModel):
+    movie_id: int
+    title: str
+    description: str
+    runtime_minutes: int
+    rating: str
+    release_date: date | None
+    poster_url: str | None
+    next_showtime_starts_at: datetime
+    reason: str
+    score: float
+
+
+class MovieRecommendationResponse(BaseModel):
+    items: list[MovieRecommendationItem]
     total: int
 
 

@@ -10,7 +10,7 @@ export function LoginPage() {
   const redirectTo = location.state?.redirectTo || "/";
   const [form, setForm] = useState({
     email: "demo@bigapplecinemas.local",
-    password: "DemoAdmin123!"
+    password: "DemoAdmin123!",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -46,7 +46,9 @@ export function LoginPage() {
               required
               type="email"
               value={form.email}
-              onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, email: event.target.value }))
+              }
             />
           </label>
           <label>
@@ -56,7 +58,9 @@ export function LoginPage() {
               minLength={8}
               type="password"
               value={form.password}
-              onChange={(event) => setForm((prev) => ({ ...prev, password: event.target.value }))}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, password: event.target.value }))
+              }
             />
           </label>
           <button disabled={isSubmitting} type="submit">
@@ -64,8 +68,11 @@ export function LoginPage() {
           </button>
         </form>
         {error && <p className="status error">{error}</p>}
-        <p className="status">
-          New here? <Link to="/register">Create account</Link>
+        <p className="auth-footer">
+          <span>New here??</span>
+          <Link className="auth-footer-link" to="/register">
+            Create account
+          </Link>
         </p>
       </article>
     </section>

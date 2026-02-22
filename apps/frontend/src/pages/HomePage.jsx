@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
-import { fetchMovies } from "../api/catalog";
+import { useAuth } from "../auth/AuthContext";
+import { fetchMovies, fetchMyRecommendations } from "../api/catalog";
 
 const BOOKING_STEPS = [
   {
@@ -45,14 +46,32 @@ const FALLBACK_SLIDES = [
 ];
 
 export function HomePage() {
+  const { isAuthenticated } = useAuth();
   const moviesQuery = useQuery({
     queryKey: ["home-featured-movies"],
     queryFn: () => fetchMovies({ limit: 6, offset: 0 }),
     staleTime: 60_000
   });
+  const recommendationsQuery = useQuery({
+    queryKey: ["home-recommendations"],
+    queryFn: () => fetchMyRecommendations({ limit: 6 }),
+    enabled: isAuthenticated,
+    staleTime: 60_000,
+    retry: false
+  });
 
   const featuredMovies = moviesQuery.data?.items ?? [];
+  const recommendationItems = recommendationsQuery.data?.items ?? [];
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
+
+  function formatShowtime(dateValue) {
+    return new Date(dateValue).toLocaleString([], {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit"
+    });
+  }
 
   const bannerSlides = useMemo(() => {
     if (featuredMovies.length === 0) {
@@ -236,6 +255,59 @@ export function HomePage() {
             </section>
           </div>
         </div>
+
+        <section className="home-panel home-recommendation-panel">
+          <div className="home-panel-header">
+            <h3>Recommended for you</h3>
+            <Link to="/movies">Explore all</Link>
+          </div>
+          {!isAuthenticated && (
+            <p className="home-muted">
+              Sign in to unlock personalized picks based on your bookings.
+              {" "}
+              <Link className="home-inline-link" to="/login">
+                Sign in
+              </Link>
+            </p>
+          )}
+          {isAuthenticated && recommendationsQuery.isLoading && (
+            <p className="status">Building recommendations from your history...</p>
+          )}
+          {isAuthenticated && recommendationsQuery.isError && (
+            <p className="status error">Could not load recommendations right now.</p>
+          )}
+          {isAuthenticated &&
+            !recommendationsQuery.isLoading &&
+            !recommendationsQuery.isError &&
+            recommendationItems.length === 0 && (
+              <p className="status">
+                No personalized picks yet. Book a movie and recommendations will appear here.
+              </p>
+            )}
+          {isAuthenticated && recommendationItems.length > 0 && (
+            <div className="home-recommendation-grid">
+              {recommendationItems.map((movie) => (
+                <article className="home-recommendation-card" key={movie.movie_id}>
+                  <div className="home-recommendation-banner">
+                    {movie.poster_url ? (
+                      <img alt={`${movie.title} poster`} loading="lazy" src={movie.poster_url} />
+                    ) : (
+                      <span>{movie.title.slice(0, 1)}</span>
+                    )}
+                  </div>
+                  <div className="home-recommendation-body">
+                    <strong>{movie.title}</strong>
+                    <p>{movie.reason}</p>
+                    <small>
+                      Next showtime: {formatShowtime(movie.next_showtime_starts_at)}
+                    </small>
+                    <Link to={`/movies/${movie.movie_id}`}>View showtimes</Link>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
 
         <section className="home-panel">
           <h3>Book in 3 simple steps</h3>

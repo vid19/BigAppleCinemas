@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { HomePage } from "./HomePage";
 import { MovieDetailPage } from "./MovieDetailPage";
 import { MoviesPage } from "./MoviesPage";
 import { MyTicketsPage } from "./MyTicketsPage";
@@ -9,6 +10,7 @@ import { SeatSelectionPage } from "./SeatSelectionPage";
 
 const useQueryMock = vi.fn();
 const useMutationMock = vi.fn();
+const useAuthMock = vi.fn();
 let paramsMock = { movieId: "3" };
 
 vi.mock("@tanstack/react-query", () => ({
@@ -24,6 +26,10 @@ vi.mock("react-router-dom", async () => {
   };
 });
 
+vi.mock("../auth/AuthContext", () => ({
+  useAuth: () => useAuthMock()
+}));
+
 function renderPage(element) {
   return renderToStaticMarkup(<MemoryRouter>{element}</MemoryRouter>);
 }
@@ -32,6 +38,10 @@ beforeEach(() => {
   paramsMock = { movieId: "3" };
   useQueryMock.mockReset();
   useMutationMock.mockReset();
+  useAuthMock.mockReset();
+  useAuthMock.mockReturnValue({
+    isAuthenticated: false
+  });
   useMutationMock.mockReturnValue({
     mutate: vi.fn(),
     isPending: false
@@ -230,5 +240,57 @@ describe("catalog pages", () => {
     expect(html).toContain("Active tickets");
     expect(html).toContain("Skyline Heist");
     expect(html).toContain("Order #7");
+  });
+
+  it("renders personalized recommendations when user is authenticated", () => {
+    useAuthMock.mockReturnValue({
+      isAuthenticated: true
+    });
+    useQueryMock.mockImplementation(({ queryKey }) => {
+      if (queryKey[0] === "home-featured-movies") {
+        return {
+          isLoading: false,
+          isError: false,
+          data: {
+            items: [
+              {
+                id: 1,
+                title: "Skyline Heist",
+                description: "Action thriller",
+                runtime_minutes: 126,
+                rating: "PG-13",
+                poster_url: null
+              }
+            ],
+            total: 1
+          }
+        };
+      }
+      if (queryKey[0] === "home-recommendations") {
+        return {
+          isLoading: false,
+          isError: false,
+          data: {
+            items: [
+              {
+                movie_id: 5,
+                title: "Midnight Orbit",
+                reason: "Because you watch Sci-Fi movies",
+                next_showtime_starts_at: "2026-02-24T02:00:00Z",
+                poster_url: null
+              }
+            ],
+            total: 1
+          }
+        };
+      }
+      return { isLoading: false, isError: false, data: {} };
+    });
+
+    const html = renderPage(<HomePage />);
+
+    expect(html).toContain("Recommended for you");
+    expect(html).toContain("Midnight Orbit");
+    expect(html).toContain("Because you watch Sci-Fi movies");
   });
 });

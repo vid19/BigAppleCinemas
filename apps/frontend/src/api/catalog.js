@@ -120,6 +120,10 @@ export function fetchMyOrders() {
   return request("/me/orders");
 }
 
+export function fetchMyRecommendations({ limit = 8 } = {}) {
+  return request("/me/recommendations", { params: { limit } });
+}
+
 export function scanTicket(payload, { staffToken } = {}) {
   return request("/tickets/scan", {
     method: "POST",

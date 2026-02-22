@@ -79,8 +79,11 @@ export function RegisterPage() {
           </button>
         </form>
         {error && <p className="status error">{error}</p>}
-        <p className="status">
-          Already have an account? <Link to="/login">Sign in</Link>
+        <p className="auth-footer">
+          <span>Already have an account?</span>
+          <Link className="auth-footer-link" to="/login">
+            Sign in
+          </Link>
         </p>
       </article>
     </section>
