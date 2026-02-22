@@ -35,6 +35,5 @@ Services:
 ## Git Workflow (Strict)
 
 - Milestone baseline commit lands on `main`.
-- Each significant feature is developed on `codex/*` branch.
 - Feature branch commits are merged to `main` after review.
 - Push after each milestone/merge checkpoint.
