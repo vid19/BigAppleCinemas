@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     cache_enabled: bool = True
     cache_ttl_seconds: int = 60
     reservation_expiry_sweep_seconds: int = 30
+    stripe_webhook_secret: str = "change-me"
+    webhook_idempotency_ttl_seconds: int = 86400
 
 
 @lru_cache

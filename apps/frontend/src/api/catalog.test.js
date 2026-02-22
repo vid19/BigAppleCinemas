@@ -2,7 +2,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   cancelReservation,
+  confirmDemoCheckout,
   createMovie,
+  createCheckoutSession,
   createReservation,
   deleteMovie,
   fetchMovies,
@@ -108,5 +110,33 @@ describe("catalog api client", () => {
     const [cancelUrl, cancelOptions] = fetchMock.mock.calls[1];
     expect(cancelUrl).toContain("/api/reservations/22");
     expect(cancelOptions.method).toBe("DELETE");
+  });
+
+  it("creates checkout session and confirms demo payment", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        json: async () => ({
+          order_id: 9,
+          provider_session_id: "cs_mock_123",
+          status: "PENDING"
+        })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ order_id: 9, order_status: "PAID", ticket_count: 2, tickets: [] })
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const session = await createCheckoutSession({ reservation_id: 9 });
+    const finalized = await confirmDemoCheckout({ order_id: 9 });
+
+    expect(session.order_id).toBe(9);
+    expect(finalized.order_status).toBe("PAID");
+    expect(fetchMock.mock.calls[0][0]).toContain("/api/checkout/session");
+    expect(fetchMock.mock.calls[1][0]).toContain("/api/checkout/demo/confirm");
   });
 });
