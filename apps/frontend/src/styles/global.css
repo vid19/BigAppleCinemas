@@ -108,6 +108,158 @@ body {
   font-weight: 700;
 }
 
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.secondary-link {
+  display: inline-block;
+  border: 1px solid rgba(255, 255, 255, 0.48);
+  color: #fff;
+  text-decoration: none;
+  padding: 0.62rem 1rem;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.home-page {
+  display: grid;
+  gap: 1rem;
+}
+
+.home-layout {
+  display: grid;
+  gap: 1rem;
+}
+
+.home-side-stack {
+  display: grid;
+  gap: 1rem;
+}
+
+.home-panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 0.95rem;
+}
+
+.home-panel h3 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.home-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.7rem;
+}
+
+.home-panel-header a {
+  color: var(--brand);
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.home-movie-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.7rem;
+}
+
+.home-movie-card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.75rem;
+  background: #f6f9fe;
+}
+
+.home-movie-card h4 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.home-movie-card p {
+  margin: 0.35rem 0 0.55rem;
+  color: var(--ink-muted);
+}
+
+.home-movie-card a {
+  color: var(--brand);
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.home-metric-grid {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.home-metric-grid article {
+  background: #f6f9fe;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.7rem;
+}
+
+.home-metric-grid p {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--brand);
+}
+
+.home-metric-grid span {
+  color: var(--ink-muted);
+  font-size: 0.9rem;
+}
+
+.home-muted {
+  margin: 0.5rem 0 0.8rem;
+  color: var(--ink-muted);
+  line-height: 1.45;
+}
+
+.home-inline-link {
+  color: var(--brand);
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.home-steps-grid {
+  display: grid;
+  gap: 0.7rem;
+  margin-top: 0.75rem;
+}
+
+.home-step-card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.75rem;
+  background: #f6f9fe;
+}
+
+.home-step-card span {
+  display: inline-block;
+  font-size: 0.78rem;
+  color: #3a5272;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.home-step-card h4 {
+  margin: 0.35rem 0;
+}
+
+.home-step-card p {
+  margin: 0;
+  color: var(--ink-muted);
+}
+
 .search-row {
   margin-bottom: 1rem;
 }
@@ -596,6 +748,19 @@ body {
 
   .hero-card h2 {
     font-size: 2.3rem;
+  }
+
+  .home-layout {
+    grid-template-columns: 2fr 1fr;
+    align-items: start;
+  }
+
+  .home-panel {
+    padding: 1rem;
+  }
+
+  .home-steps-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .seat-layout-wrap {
