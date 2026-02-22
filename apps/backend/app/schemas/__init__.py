@@ -31,6 +31,8 @@ from app.schemas.payment import (
 from app.schemas.portal import (
     AdminSalesReportResponse,
     AdminShowtimeSalesItem,
+    MovieRecommendationItem,
+    MovieRecommendationResponse,
     MyOrderItem,
     MyOrderListResponse,
     MyTicketItem,
@@ -56,6 +58,8 @@ __all__ = [
     "CheckoutSessionRead",
     "AdminSalesReportResponse",
     "AdminShowtimeSalesItem",
+    "MovieRecommendationItem",
+    "MovieRecommendationResponse",
     "MyOrderItem",
     "MyOrderListResponse",
     "MyTicketItem",

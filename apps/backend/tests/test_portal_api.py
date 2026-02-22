@@ -76,6 +76,25 @@ def test_me_endpoints_return_orders_and_tickets(client: TestClient) -> None:
     assert orders_response.json()["total"] >= 1
 
 
+def test_me_recommendations_endpoint_returns_ranked_movies(client: TestClient) -> None:
+    _create_paid_ticket(client)
+
+    tickets_response = client.get("/api/me/tickets")
+    assert tickets_response.status_code == 200
+    watched_movies = {item["movie_title"] for item in tickets_response.json()["items"]}
+
+    response = client.get("/api/me/recommendations", params={"limit": 5})
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["total"] >= 1
+    assert len(payload["items"]) >= 1
+    first_item = payload["items"][0]
+    assert "movie_id" in first_item
+    assert "reason" in first_item
+    assert isinstance(first_item["score"], float)
+    assert first_item["title"] not in watched_movies
+
+
 def test_admin_sales_report_endpoint(client: TestClient) -> None:
     response = client.get("/api/admin/reports/sales", params={"limit": 5})
     assert response.status_code == 200

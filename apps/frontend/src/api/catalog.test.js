@@ -11,6 +11,7 @@ import {
   fetchAdminSalesReport,
   fetchActiveReservation,
   fetchMyOrders,
+  fetchMyRecommendations,
   fetchMyTickets,
   fetchMovies,
   fetchShowtimes,
@@ -199,17 +200,25 @@ describe("catalog api client", () => {
         ok: true,
         status: 200,
         json: async () => ({ paid_orders: 0, gross_revenue_cents: 0, showtimes: [] })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ items: [], total: 0 })
       });
     vi.stubGlobal("fetch", fetchMock);
 
     await fetchMyTickets();
     await fetchMyOrders();
     await fetchAdminSalesReport({ limit: 5 });
+    await fetchMyRecommendations({ limit: 4 });
 
     expect(fetchMock.mock.calls[0][0]).toContain("/api/me/tickets");
     expect(fetchMock.mock.calls[1][0]).toContain("/api/me/orders");
     expect(fetchMock.mock.calls[2][0]).toContain("/api/admin/reports/sales");
     expect(fetchMock.mock.calls[2][0]).toContain("limit=5");
+    expect(fetchMock.mock.calls[3][0]).toContain("/api/me/recommendations");
+    expect(fetchMock.mock.calls[3][0]).toContain("limit=4");
   });
 
   it("sends staff header for ticket scan", async () => {

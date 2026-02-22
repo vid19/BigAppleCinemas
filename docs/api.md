@@ -46,7 +46,8 @@ Base URL: `http://localhost:8000/api`
 
 - `GET /me/tickets`
 - `GET /me/orders`
-  - Both require bearer token
+- `GET /me/recommendations`
+  - All require bearer token
 
 ## Admin Reports
 

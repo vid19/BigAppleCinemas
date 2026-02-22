@@ -467,6 +467,70 @@ body {
   font-weight: 700;
 }
 
+.home-recommendation-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+
+.home-recommendation-card {
+  border: 1px solid #d4e1f3;
+  border-radius: 12px;
+  overflow: hidden;
+  background: linear-gradient(180deg, #f8fbff, #eef5ff);
+}
+
+.home-recommendation-banner {
+  height: 165px;
+  background: linear-gradient(145deg, #12355f, #2f69a8);
+  position: relative;
+}
+
+.home-recommendation-banner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.home-recommendation-banner span {
+  width: 100%;
+  height: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.1rem;
+  color: #dae9ff;
+  font-weight: 800;
+}
+
+.home-recommendation-body {
+  padding: 0.72rem 0.8rem;
+  display: grid;
+  gap: 0.36rem;
+}
+
+.home-recommendation-body strong {
+  font-size: 1rem;
+  color: #12325b;
+}
+
+.home-recommendation-body p {
+  margin: 0;
+  color: #3f5879;
+  font-size: 0.9rem;
+}
+
+.home-recommendation-body small {
+  color: #5c7291;
+}
+
+.home-recommendation-body a {
+  color: #0f4c98;
+  text-decoration: none;
+  font-weight: 700;
+}
+
 .home-steps-grid {
   display: grid;
   gap: 0.7rem;
@@ -1306,6 +1370,26 @@ body {
 .auth-form button:disabled {
   opacity: 0.65;
   cursor: not-allowed;
+}
+
+.auth-footer {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 1.15rem 0 0;
+  padding-top: 0.35rem;
+  font-size: 1rem;
+  color: #4f6481;
+}
+
+.auth-footer-link {
+  color: #0f4c98;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.auth-footer-link:hover {
+  text-decoration: underline;
 }
 
 .search-row-modern {
