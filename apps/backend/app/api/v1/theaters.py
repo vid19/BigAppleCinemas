@@ -13,7 +13,7 @@ router = APIRouter()
 @router.get("", response_model=TheaterListResponse)
 async def list_theaters(
     city: str | None = Query(default=None),
-    limit: int = Query(default=20, ge=1, le=50),
+    limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     session: AsyncSession = Depends(get_db_session),
 ) -> TheaterListResponse:
