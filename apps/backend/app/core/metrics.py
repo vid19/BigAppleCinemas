@@ -14,6 +14,10 @@ METRIC_DEFINITIONS: dict[str, str] = {
     "ticket_scan_invalid_total": "Ticket scans rejected as invalid.",
     "ticket_scan_already_used_total": "Ticket scans rejected as already used.",
     "recommendation_feedback_total": "Recommendation feedback events submitted.",
+    "recommendation_impression_total": "Recommendation cards rendered to users.",
+    "recommendation_click_total": "Recommendation cards clicked by users.",
+    "recommendation_save_total": "Recommendation cards saved for later.",
+    "recommendation_hide_total": "Recommendation cards marked not interested.",
 }
 
 
@@ -36,6 +40,14 @@ _metrics_store = _MetricsStore()
 
 def increment_metric(metric_name: str, value: int = 1) -> None:
     _metrics_store.increment(metric_name, value)
+
+
+def get_metric_value(metric_name: str) -> int:
+    return _metrics_store.snapshot().get(metric_name, 0)
+
+
+def get_metrics_snapshot() -> dict[str, int]:
+    return _metrics_store.snapshot()
 
 
 def render_prometheus_metrics() -> str:

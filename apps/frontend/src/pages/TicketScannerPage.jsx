@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 
 import { scanTicket } from "../api/catalog";
@@ -6,11 +6,96 @@ import { scanTicket } from "../api/catalog";
 export function TicketScannerPage() {
   const [qrToken, setQrToken] = useState("");
   const [staffToken, setStaffToken] = useState("local-staff");
+  const [cameraStatus, setCameraStatus] = useState("idle");
+  const [cameraError, setCameraError] = useState("");
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+  const detectorRef = useRef(null);
+  const scannerTimerRef = useRef(null);
+  const lastScannedTokenRef = useRef("");
 
   const scanMutation = useMutation({
     mutationFn: ({ token, staff }) =>
       scanTicket({ qr_token: token }, { staffToken: staff })
   });
+
+  function clearScannerTimer() {
+    if (scannerTimerRef.current) {
+      window.clearInterval(scannerTimerRef.current);
+      scannerTimerRef.current = null;
+    }
+  }
+
+  function stopCamera() {
+    clearScannerTimer();
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setCameraStatus("idle");
+  }
+
+  async function detectTokenFromFrame() {
+    if (!videoRef.current || !detectorRef.current || scanMutation.isPending) {
+      return;
+    }
+    if (videoRef.current.readyState < 2) {
+      return;
+    }
+    try {
+      const detections = await detectorRef.current.detect(videoRef.current);
+      if (!detections || detections.length === 0) {
+        return;
+      }
+      const candidateToken = detections[0]?.rawValue?.trim();
+      if (!candidateToken || candidateToken === lastScannedTokenRef.current) {
+        return;
+      }
+      lastScannedTokenRef.current = candidateToken;
+      setQrToken(candidateToken);
+      scanMutation.mutate({ token: candidateToken, staff: staffToken.trim() });
+    } catch {
+      // keep camera running even if one frame fails
+    }
+  }
+
+  async function startCamera() {
+    setCameraError("");
+    if (!globalThis.navigator?.mediaDevices?.getUserMedia) {
+      setCameraError("Camera access is not supported in this browser.");
+      return;
+    }
+    if (!("BarcodeDetector" in globalThis)) {
+      setCameraError("Barcode detection is not supported on this browser. Use manual token entry.");
+      return;
+    }
+
+    try {
+      detectorRef.current = new globalThis.BarcodeDetector({
+        formats: ["qr_code"]
+      });
+      const stream = await globalThis.navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "environment" } },
+        audio: false
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+      setCameraStatus("active");
+      scannerTimerRef.current = window.setInterval(detectTokenFromFrame, 650);
+    } catch (error) {
+      setCameraStatus("idle");
+      setCameraError(error?.message || "Could not start camera.");
+      stopCamera();
+    }
+  }
+
+  useEffect(() => () => stopCamera(), []);
 
   return (
     <section className="page page-shell">
@@ -27,6 +112,28 @@ export function TicketScannerPage() {
           <button type="button" onClick={() => setStaffToken("local-staff")}>
             Reset staff token
           </button>
+        </div>
+        <div className="scanner-camera-row">
+          <div className="scanner-camera-preview">
+            {cameraStatus !== "active" && (
+              <p className="status">Camera preview is off. Start camera to scan QR automatically.</p>
+            )}
+            <video
+              ref={videoRef}
+              className="scanner-camera-video"
+              muted
+              playsInline
+            />
+          </div>
+          <div className="scanner-camera-actions">
+            <button type="button" onClick={startCamera} disabled={cameraStatus === "active"}>
+              Start camera
+            </button>
+            <button type="button" onClick={stopCamera} disabled={cameraStatus !== "active"}>
+              Stop camera
+            </button>
+          </div>
+          {cameraError && <p className="status error">{cameraError}</p>}
         </div>
         <form
           className="scanner-form"

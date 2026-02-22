@@ -1,3 +1,4 @@
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
@@ -14,7 +15,11 @@ def _register_user_headers(client: TestClient) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
-def _create_paid_ticket(client: TestClient, *, headers: dict[str, str] | None = None) -> str:
+def _create_paid_ticket(
+    client: TestClient,
+    *,
+    headers: dict[str, str] | None = None,
+) -> dict[str, int | str]:
     showtimes_response = client.get("/api/showtimes", params={"limit": 1, "offset": 0})
     assert showtimes_response.status_code == 200
     showtime_id = showtimes_response.json()["items"][0]["id"]
@@ -50,11 +55,12 @@ def _create_paid_ticket(client: TestClient, *, headers: dict[str, str] | None = 
     assert confirm_response.status_code == 200
     tickets = confirm_response.json()["tickets"]
     assert len(tickets) == 1
-    return tickets[0]["qr_token"]
+    return {"qr_token": tickets[0]["qr_token"], "showtime_id": showtime_id}
 
 
 def test_ticket_scan_valid_then_already_used(client: TestClient) -> None:
-    qr_token = _create_paid_ticket(client)
+    ticket = _create_paid_ticket(client)
+    qr_token = str(ticket["qr_token"])
 
     first_scan = client.post(
         "/api/tickets/scan",
@@ -81,6 +87,31 @@ def test_ticket_scan_invalid_token(client: TestClient) -> None:
     )
     assert response.status_code == 200
     assert response.json()["result"] == "INVALID"
+
+
+def test_ticket_scan_rejects_expired_showtime(client: TestClient) -> None:
+    ticket = _create_paid_ticket(client)
+    qr_token = str(ticket["qr_token"])
+    showtime_id = int(ticket["showtime_id"])
+    now = datetime.now(tz=UTC)
+
+    patch_response = client.patch(
+        f"/api/admin/showtimes/{showtime_id}",
+        json={
+            "starts_at": (now - timedelta(hours=3)).isoformat(),
+            "ends_at": (now - timedelta(minutes=25)).isoformat(),
+        },
+    )
+    assert patch_response.status_code == 200
+
+    scan_response = client.post(
+        "/api/tickets/scan",
+        headers={"x-staff-token": "local-staff"},
+        json={"qr_token": qr_token},
+    )
+    assert scan_response.status_code == 200
+    assert scan_response.json()["result"] == "INVALID"
+    assert "expired" in scan_response.json()["message"].lower()
 
 
 def test_me_endpoints_return_orders_and_tickets(client: TestClient) -> None:
@@ -174,6 +205,23 @@ def test_recommendation_feedback_save_for_later_reason(client: TestClient) -> No
     assert selected["reason"] == "Saved for later"
 
 
+def test_recommendation_event_tracking_endpoint(client: TestClient) -> None:
+    headers = _register_user_headers(client)
+    response = client.get("/api/me/recommendations", params={"limit": 10}, headers=headers)
+    assert response.status_code == 200
+    items = response.json()["items"]
+    assert items
+    movie_id = items[0]["movie_id"]
+
+    track_response = client.post(
+        "/api/me/recommendations/events",
+        headers=headers,
+        json={"movie_id": movie_id, "event_type": "CLICK"},
+    )
+    assert track_response.status_code == 200
+    assert track_response.json()["recorded"] is True
+
+
 def test_admin_sales_report_endpoint(client: TestClient) -> None:
     response = client.get("/api/admin/reports/sales", params={"limit": 5})
     assert response.status_code == 200
@@ -181,3 +229,4 @@ def test_admin_sales_report_endpoint(client: TestClient) -> None:
     assert "paid_orders" in payload
     assert "gross_revenue_cents" in payload
     assert "showtimes" in payload
+    assert "recommendation_clicks" in payload

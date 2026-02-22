@@ -16,6 +16,7 @@ dependencies = [
   "pydantic-settings>=2.5.0",
   "python-jose[cryptography]>=3.3.0",
   "redis>=5.1.0",
+  "stripe>=11.6.0",
   "sqlalchemy>=2.0.35",
   "uvicorn[standard]>=0.30.6"
 ]

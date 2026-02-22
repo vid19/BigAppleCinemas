@@ -1,6 +1,9 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
 export const AUTH_TOKEN_STORAGE_KEY = "bigapplecinemas.authToken";
+export const REFRESH_TOKEN_STORAGE_KEY = "bigapplecinemas.refreshToken";
 let accessToken = null;
+let refreshToken = null;
+let authRefreshHandler = null;
 
 export function setAccessToken(token) {
   accessToken = token || null;
@@ -10,7 +13,22 @@ export function getAccessToken() {
   return accessToken;
 }
 
-async function request(path, { params = {}, method = "GET", body, headers = {} } = {}) {
+export function setRefreshToken(token) {
+  refreshToken = token || null;
+}
+
+export function getRefreshToken() {
+  return refreshToken;
+}
+
+export function setAuthRefreshHandler(handler) {
+  authRefreshHandler = handler;
+}
+
+async function request(
+  path,
+  { params = {}, method = "GET", body, headers = {}, noAuthRetry = false } = {}
+) {
   const url = new URL(`${API_BASE_URL}${path}`);
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== "") {
@@ -28,6 +46,12 @@ async function request(path, { params = {}, method = "GET", body, headers = {} }
     body: body ? JSON.stringify(body) : undefined
   });
   if (!response.ok) {
+    if (response.status === 401 && !noAuthRetry && typeof authRefreshHandler === "function") {
+      const refreshed = await authRefreshHandler();
+      if (refreshed) {
+        return request(path, { params, method, body, headers, noAuthRetry: true });
+      }
+    }
     let detail = "";
     try {
       const payload = await response.json();
@@ -63,6 +87,14 @@ export function loginUser(payload) {
 
 export function fetchAuthMe() {
   return request("/auth/me");
+}
+
+export function refreshAuthToken(payload) {
+  return request("/auth/refresh", { method: "POST", body: payload, noAuthRetry: true });
+}
+
+export function logoutUser(payload) {
+  return request("/auth/logout", { method: "POST", body: payload, noAuthRetry: true });
 }
 
 export function fetchMovie(movieId) {
@@ -112,6 +144,10 @@ export function confirmDemoCheckout(payload) {
   return request("/checkout/demo/confirm", { method: "POST", body: payload });
 }
 
+export function fetchCheckoutOrderStatus(orderId) {
+  return request(`/checkout/orders/${orderId}`);
+}
+
 export function fetchMyTickets() {
   return request("/me/tickets");
 }
@@ -126,6 +162,10 @@ export function fetchMyRecommendations({ limit = 8 } = {}) {
 
 export function submitRecommendationFeedback(payload) {
   return request("/me/recommendations/feedback", { method: "POST", body: payload });
+}
+
+export function submitRecommendationEvent(payload) {
+  return request("/me/recommendations/events", { method: "POST", body: payload });
 }
 
 export function scanTicket(payload, { staffToken } = {}) {

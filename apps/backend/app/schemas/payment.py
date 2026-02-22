@@ -31,6 +31,14 @@ class TicketRead(BaseModel):
     status: str
 
 
+class CheckoutOrderStatusRead(BaseModel):
+    order_id: int
+    order_status: str
+    provider: str
+    ticket_count: int
+    tickets: list[TicketRead]
+
+
 class CheckoutFinalizeRead(BaseModel):
     order_id: int
     order_status: str

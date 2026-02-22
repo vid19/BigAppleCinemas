@@ -6,11 +6,22 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.cache import delete_cache_prefix
+from app.core.config import settings
 from app.models.order import Order, Ticket
 from app.models.reservation import Reservation, ReservationSeat, ShowtimeSeatStatus
 from app.models.showtime import Seat
-from app.schemas.payment import CheckoutFinalizeRead, CheckoutSessionRead, TicketRead
+from app.schemas.payment import (
+    CheckoutFinalizeRead,
+    CheckoutOrderStatusRead,
+    CheckoutSessionRead,
+    TicketRead,
+)
 from app.services.reservation_service import ReservationService
+
+try:
+    import stripe
+except ModuleNotFoundError:  # pragma: no cover - resolved once dependency is installed
+    stripe = None
 
 SEAT_TYPE_PRICE_CENTS = {
     "STANDARD": 1500,
@@ -83,8 +94,8 @@ class PaymentService:
         if not seat_rows:
             raise HTTPException(status_code=400, detail="Reservation has no seats")
 
+        provider_name = provider.strip().upper()
         total_cents = sum(_seat_price_cents(seat_type) for _, seat_type in seat_rows)
-        provider_session_id = f"cs_mock_{uuid4().hex}"
         order = Order(
             user_id=user_id,
             showtime_id=reservation.showtime_id,
@@ -92,10 +103,25 @@ class PaymentService:
             status="PENDING",
             total_cents=total_cents,
             currency="USD",
-            provider=provider,
-            provider_session_id=provider_session_id,
+            provider=provider_name,
+            provider_session_id=None,
         )
         session.add(order)
+        await session.flush()
+        if provider_name == "STRIPE_CHECKOUT":
+            provider_session_id, checkout_url = await self._create_stripe_checkout_session(
+                order_id=order.id,
+                user_id=user_id,
+                reservation_id=reservation.id,
+                seat_rows=seat_rows,
+                currency=order.currency,
+            )
+        else:
+            provider_session_id = f"cs_mock_{uuid4().hex}"
+            checkout_url = (
+                f"/checkout/processing?order_id={order.id}&session_id={provider_session_id}"
+            )
+        order.provider_session_id = provider_session_id
         await session.flush()
         return CheckoutSessionRead(
             order_id=order.id,
@@ -105,7 +131,7 @@ class PaymentService:
             status=order.status,
             total_cents=order.total_cents,
             currency=order.currency,
-            checkout_url=f"/checkout/processing?order_id={order.id}&session_id={provider_session_id}",
+            checkout_url=checkout_url,
             created_at=order.created_at,
         )
 
@@ -251,6 +277,31 @@ class PaymentService:
             raise HTTPException(status_code=404, detail="Order not found")
         return order
 
+    async def get_order_status_for_user(
+        self,
+        session: AsyncSession,
+        *,
+        order_id: int,
+        user_id: int,
+    ) -> CheckoutOrderStatusRead:
+        order = (
+            await session.execute(
+                select(Order)
+                .where(Order.id == order_id, Order.user_id == user_id)
+                .with_for_update()
+            )
+        ).scalar_one_or_none()
+        if order is None:
+            raise HTTPException(status_code=404, detail="Order not found")
+        payload = await self._finalize_payload(session, order.id, order.status)
+        return CheckoutOrderStatusRead(
+            order_id=payload.order_id,
+            order_status=payload.order_status,
+            provider=order.provider,
+            ticket_count=payload.ticket_count,
+            tickets=payload.tickets,
+        )
+
     async def _finalize_payload(
         self,
         session: AsyncSession,
@@ -277,3 +328,56 @@ class PaymentService:
             ticket_count=len(tickets),
             tickets=tickets,
         )
+
+    async def _create_stripe_checkout_session(
+        self,
+        *,
+        order_id: int,
+        user_id: int,
+        reservation_id: int,
+        seat_rows: list[tuple[int, str]],
+        currency: str,
+    ) -> tuple[str, str]:
+        if not settings.stripe_secret_key:
+            raise HTTPException(
+                status_code=400,
+                detail="Stripe is not configured for this environment",
+            )
+        if stripe is None:
+            raise HTTPException(status_code=503, detail="Stripe SDK not installed")
+
+        stripe.api_key = settings.stripe_secret_key
+        line_items = []
+        for _, seat_type in seat_rows:
+            seat_label = seat_type.upper()
+            line_items.append(
+                {
+                    "quantity": 1,
+                    "price_data": {
+                        "currency": currency.lower(),
+                        "product_data": {"name": f"{seat_label.title()} seat"},
+                        "unit_amount": _seat_price_cents(seat_label),
+                    },
+                }
+            )
+
+        checkout_session = stripe.checkout.Session.create(
+            mode="payment",
+            line_items=line_items,
+            client_reference_id=str(order_id),
+            metadata={
+                "order_id": str(order_id),
+                "reservation_id": str(reservation_id),
+                "user_id": str(user_id),
+            },
+            success_url=(
+                f"{settings.stripe_checkout_success_url}?order_id={order_id}"
+                "&status=success"
+            ),
+            cancel_url=f"{settings.stripe_checkout_cancel_url}?order_id={order_id}&status=cancel",
+        )
+        session_id = str(checkout_session.get("id") or "")
+        checkout_url = str(checkout_session.get("url") or "")
+        if not session_id or not checkout_url:
+            raise HTTPException(status_code=502, detail="Stripe checkout session response invalid")
+        return session_id, checkout_url

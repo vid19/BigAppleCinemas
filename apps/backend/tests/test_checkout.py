@@ -45,6 +45,10 @@ def test_checkout_demo_confirm_marks_order_paid_and_sells_seat(client: TestClien
     sold_count = len([seat for seat in seats_response.json()["seats"] if seat["status"] == "SOLD"])
     assert sold_count >= 1
 
+    status_response = client.get(f"/api/checkout/orders/{order_id}")
+    assert status_response.status_code == 200
+    assert status_response.json()["order_status"] == "PAID"
+
 
 def test_webhook_is_idempotent_for_duplicate_event_id(client: TestClient) -> None:
     reservation_id, _ = _create_active_reservation(client)

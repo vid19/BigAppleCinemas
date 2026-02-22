@@ -1,3 +1,4 @@
+from app.models.auth_session import RefreshTokenSession
 from app.models.movie import Movie
 from app.models.order import Order, Ticket
 from app.models.recommendation import MovieSimilarity, UserMovieEvent
@@ -8,6 +9,7 @@ from app.models.user import User
 __all__ = [
     "Auditorium",
     "Movie",
+    "RefreshTokenSession",
     "Order",
     "MovieSimilarity",
     "UserMovieEvent",

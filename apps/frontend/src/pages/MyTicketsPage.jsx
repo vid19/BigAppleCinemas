@@ -1,8 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { fetchMyOrders, fetchMyTickets } from "../api/catalog";
 import { TicketQrCode } from "../components/TicketQrCode";
+
+const TICKET_ACTIVE_GRACE_MS = 20 * 60 * 1000;
 
 function formatDateTime(dateValue) {
   return new Date(dateValue).toLocaleString([], {
@@ -15,6 +17,7 @@ function formatDateTime(dateValue) {
 
 export function MyTicketsPage() {
   const [copiedTicketId, setCopiedTicketId] = useState(null);
+  const [nowMs, setNowMs] = useState(Date.now());
   const ticketsQuery = useQuery({
     queryKey: ["me-tickets"],
     queryFn: fetchMyTickets
@@ -25,13 +28,31 @@ export function MyTicketsPage() {
   });
 
   const tickets = ticketsQuery.data?.items ?? [];
+  useEffect(() => {
+    const timerId = window.setInterval(() => {
+      setNowMs(Date.now());
+    }, 30_000);
+    return () => window.clearInterval(timerId);
+  }, []);
+
+  const classifyTicket = (ticket) => {
+    if (ticket.ticket_status !== "VALID") {
+      return "PAST";
+    }
+    const endsAtMs = ticket.showtime_ends_at
+      ? new Date(ticket.showtime_ends_at).getTime()
+      : new Date(ticket.showtime_starts_at).getTime();
+    const activeUntilMs = endsAtMs + TICKET_ACTIVE_GRACE_MS;
+    return nowMs <= activeUntilMs ? "ACTIVE" : "PAST";
+  };
+
   const activeTickets = useMemo(
-    () => tickets.filter((ticket) => ticket.ticket_status === "VALID"),
-    [tickets]
+    () => tickets.filter((ticket) => classifyTicket(ticket) === "ACTIVE"),
+    [nowMs, tickets]
   );
   const pastTickets = useMemo(
-    () => tickets.filter((ticket) => ticket.ticket_status !== "VALID"),
-    [tickets]
+    () => tickets.filter((ticket) => classifyTicket(ticket) === "PAST"),
+    [nowMs, tickets]
   );
   const orders = ordersQuery.data?.items ?? [];
   const usedTicketsCount = tickets.filter((ticket) => ticket.ticket_status === "USED").length;
