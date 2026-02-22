@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 
 import {
   cancelReservation,
+  fetchActiveReservation,
   createCheckoutSession,
   createReservation,
   fetchShowtimeSeats
@@ -38,6 +39,14 @@ export function SeatSelectionPage() {
     refetchInterval: 4000
   });
   const { refetch } = seatsQuery;
+  const activeReservationQuery = useQuery({
+    queryKey: ["reservation-active", parsedShowtimeId],
+    queryFn: () => fetchActiveReservation(parsedShowtimeId),
+    enabled: Number.isFinite(parsedShowtimeId),
+    refetchInterval: 4000,
+    retry: false
+  });
+  const refetchActiveReservation = activeReservationQuery.refetch;
 
   const createReservationMutation = useMutation({
     mutationFn: createReservation,
@@ -46,6 +55,7 @@ export function SeatSelectionPage() {
       setSelectedSeatIds(payload.seat_ids ?? []);
       setFeedback("Seats are held. Complete checkout before the timer expires.");
       refetch();
+      refetchActiveReservation();
     },
     onError: (error) => {
       setFeedback(error.message);
@@ -60,15 +70,23 @@ export function SeatSelectionPage() {
       setReservation(null);
       setSelectedSeatIds([]);
       refetch();
+      refetchActiveReservation();
     },
     onError: (error) => setFeedback(error.message)
   });
   const checkoutMutation = useMutation({
     mutationFn: createCheckoutSession,
     onSuccess: (payload) => {
-      navigate(
-        `/checkout/processing?order_id=${payload.order_id}&session_id=${payload.provider_session_id}`
-      );
+      const params = new globalThis.URLSearchParams({
+        order_id: String(payload.order_id),
+        session_id: payload.provider_session_id,
+        reservation_id: String(payload.reservation_id),
+        total_cents: String(payload.total_cents),
+        currency: payload.currency,
+        provider: payload.provider,
+        seat_count: String(reservation?.seat_ids?.length ?? selectedSeatDetails.length)
+      });
+      navigate(`/checkout/processing?${params.toString()}`);
     },
     onError: (error) => setFeedback(error.message)
   });
@@ -97,6 +115,28 @@ export function SeatSelectionPage() {
   }, [activeHold, nowMs, reservation?.expires_at]);
 
   useEffect(() => {
+    const activeReservation = activeReservationQuery.data;
+    if (!activeReservation || activeReservation.status !== "ACTIVE") {
+      return;
+    }
+    setReservation((previous) => {
+      if (
+        previous &&
+        previous.id === activeReservation.id &&
+        previous.status === activeReservation.status &&
+        previous.expires_at === activeReservation.expires_at
+      ) {
+        return previous;
+      }
+      return activeReservation;
+    });
+    setSelectedSeatIds(activeReservation.seat_ids ?? []);
+    setFeedback((current) =>
+      current || "Resumed your active hold. Complete checkout before the timer expires."
+    );
+  }, [activeReservationQuery.data]);
+
+  useEffect(() => {
     if (!activeHold) {
       return undefined;
     }
@@ -112,8 +152,9 @@ export function SeatSelectionPage() {
       setFeedback("Your hold expired. Select seats again.");
       setSelectedSeatIds([]);
       refetch();
+      refetchActiveReservation();
     }
-  }, [activeHold, remainingSeconds, refetch]);
+  }, [activeHold, remainingSeconds, refetch, refetchActiveReservation]);
 
   if (!Number.isFinite(parsedShowtimeId)) {
     return <p className="status error">Invalid showtime URL.</p>;
@@ -153,7 +194,6 @@ export function SeatSelectionPage() {
         <p>
           {seatData.theater_name} • {formatDateTime(seatData.starts_at)}
         </p>
-        <p className="seat-layout-label">Screen this way</p>
         {activeHold && (
           <p className="seat-hold-pill">Hold expires in {holdTimerText}</p>
         )}
@@ -224,7 +264,7 @@ export function SeatSelectionPage() {
                 disabled={checkoutMutation.isPending}
                 onClick={() => checkoutMutation.mutate({ reservation_id: reservation.id })}
               >
-                {checkoutMutation.isPending ? "Starting checkout..." : "Proceed to checkout"}
+                {checkoutMutation.isPending ? "Preparing checkout..." : "Review and pay"}
               </button>
             )}
           </div>

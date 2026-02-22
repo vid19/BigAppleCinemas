@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import UTC, date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import and_, func, select
@@ -23,16 +23,21 @@ async def list_showtimes(
     movie_id: int | None = Query(default=None),
     theater_id: int | None = Query(default=None),
     show_date: date | None = Query(default=None, alias="date"),
+    include_past: bool = Query(default=False),
     limit: int = Query(default=40, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     session: AsyncSession = Depends(get_db_session),
 ) -> ShowtimeListResponse:
+    now_utc = datetime.now(tz=UTC)
     show_date_text = show_date.isoformat() if show_date else ""
+    freshness_bucket = now_utc.strftime("%Y%m%d%H%M") if not include_past else "all"
     cache_key = (
         "catalog:showtimes:"
         f"movie_id={movie_id or ''}:"
         f"theater_id={theater_id or ''}:"
         f"date={show_date_text}:"
+        f"include_past={include_past}:"
+        f"freshness={freshness_bucket}:"
         f"limit={limit}:offset={offset}"
     )
     cached = await get_cache_json(cache_key)
@@ -46,6 +51,8 @@ async def list_showtimes(
         filters.append(Theater.id == theater_id)
     if show_date is not None:
         filters.append(func.date(Showtime.starts_at) == show_date)
+    if not include_past:
+        filters.append(Showtime.starts_at >= now_utc)
 
     join_stmt = (
         select(

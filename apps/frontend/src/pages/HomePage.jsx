@@ -120,7 +120,7 @@ export function HomePage() {
               <Link className="primary-link" to={activeSlidePath}>
                 {activeSlide?.ctaLabel ?? "Browse movies"}
               </Link>
-              <Link className="secondary-link" to="/my/tickets">
+              <Link className="secondary-link" to="/me/tickets">
                 View my tickets
               </Link>
             </div>

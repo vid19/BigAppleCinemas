@@ -86,3 +86,69 @@ def test_admin_showtime_crud_flow(client: TestClient) -> None:
 
     delete_response = client.delete(f"/api/admin/showtimes/{showtime_id}")
     assert delete_response.status_code == 204
+
+
+def test_showtimes_hide_past_by_default(client: TestClient) -> None:
+    create_movie_response = client.post(
+        "/api/admin/movies",
+        json={
+            "title": "Showtime Filter Movie",
+            "description": "Movie used for showtime filtering integration test",
+            "runtime_minutes": 105,
+            "rating": "PG-13",
+        },
+    )
+    assert create_movie_response.status_code == 201
+    movie_id = create_movie_response.json()["id"]
+
+    now = datetime.now(tz=UTC).replace(microsecond=0)
+    past_starts_at = now - timedelta(hours=5)
+    future_starts_at = now + timedelta(hours=5)
+
+    past_response = client.post(
+        "/api/admin/showtimes",
+        json={
+            "movie_id": movie_id,
+            "auditorium_id": 1,
+            "starts_at": past_starts_at.isoformat(),
+            "ends_at": (past_starts_at + timedelta(hours=2)).isoformat(),
+            "status": "SCHEDULED",
+        },
+    )
+    assert past_response.status_code == 201
+    past_showtime_id = past_response.json()["id"]
+
+    future_response = client.post(
+        "/api/admin/showtimes",
+        json={
+            "movie_id": movie_id,
+            "auditorium_id": 1,
+            "starts_at": future_starts_at.isoformat(),
+            "ends_at": (future_starts_at + timedelta(hours=2)).isoformat(),
+            "status": "SCHEDULED",
+        },
+    )
+    assert future_response.status_code == 201
+    future_showtime_id = future_response.json()["id"]
+
+    default_list = client.get(
+        "/api/showtimes",
+        params={"movie_id": movie_id, "limit": 20, "offset": 0},
+    )
+    assert default_list.status_code == 200
+    default_ids = {item["id"] for item in default_list.json()["items"]}
+    assert future_showtime_id in default_ids
+    assert past_showtime_id not in default_ids
+
+    include_past_list = client.get(
+        "/api/showtimes",
+        params={"movie_id": movie_id, "include_past": "true", "limit": 20, "offset": 0},
+    )
+    assert include_past_list.status_code == 200
+    include_past_ids = {item["id"] for item in include_past_list.json()["items"]}
+    assert future_showtime_id in include_past_ids
+    assert past_showtime_id in include_past_ids
+
+    assert client.delete(f"/api/admin/showtimes/{past_showtime_id}").status_code == 204
+    assert client.delete(f"/api/admin/showtimes/{future_showtime_id}").status_code == 204
+    assert client.delete(f"/api/admin/movies/{movie_id}").status_code == 204

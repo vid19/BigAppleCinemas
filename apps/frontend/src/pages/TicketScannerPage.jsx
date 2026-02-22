@@ -19,25 +19,40 @@ export function TicketScannerPage() {
         <p>Validate ticket tokens at entry and prevent duplicate usage.</p>
       </div>
 
-      <article className="admin-card scanner-card">
+      <article className="admin-card scanner-card scanner-layout-card">
+        <div className="scanner-help-row">
+          <p className="status">
+            Demo token for local: <code>local-staff</code>
+          </p>
+          <button type="button" onClick={() => setStaffToken("local-staff")}>
+            Reset staff token
+          </button>
+        </div>
         <form
+          className="scanner-form"
           onSubmit={(event) => {
             event.preventDefault();
-            scanMutation.mutate({ token: qrToken, staff: staffToken });
+            scanMutation.mutate({ token: qrToken.trim(), staff: staffToken.trim() });
           }}
         >
-          <input
-            required
-            placeholder="Ticket QR token"
-            value={qrToken}
-            onChange={(event) => setQrToken(event.target.value)}
-          />
-          <input
-            required
-            placeholder="Staff scan token"
-            value={staffToken}
-            onChange={(event) => setStaffToken(event.target.value)}
-          />
+          <label>
+            Ticket QR token
+            <input
+              required
+              placeholder="Paste ticket token"
+              value={qrToken}
+              onChange={(event) => setQrToken(event.target.value)}
+            />
+          </label>
+          <label>
+            Staff scan token
+            <input
+              required
+              placeholder="Staff scan token"
+              value={staffToken}
+              onChange={(event) => setStaffToken(event.target.value)}
+            />
+          </label>
           <button type="submit" disabled={scanMutation.isPending}>
             {scanMutation.isPending ? "Scanning..." : "Scan ticket"}
           </button>
@@ -46,14 +61,22 @@ export function TicketScannerPage() {
 
       {scanMutation.isError && <p className="status error">{scanMutation.error.message}</p>}
       {scanMutation.isSuccess && (
-        <article className="admin-card scanner-card">
-          <h3>Scan result: {scanMutation.data.result}</h3>
+        <article className="admin-card scanner-card scanner-result-card">
+          <h3>
+            Scan result:{" "}
+            <span
+              className={`scanner-result-pill ${scanMutation.data.result.toLowerCase()}`}
+            >
+              {scanMutation.data.result}
+            </span>
+          </h3>
           <p className="status">{scanMutation.data.message}</p>
           {scanMutation.data.ticket_id && (
-            <p className="status">
-              Ticket #{scanMutation.data.ticket_id} • Seat {scanMutation.data.seat_code} •
-              Showtime #{scanMutation.data.showtime_id}
-            </p>
+            <div className="scanner-result-meta">
+              <p className="status">Ticket #{scanMutation.data.ticket_id}</p>
+              <p className="status">Seat {scanMutation.data.seat_code}</p>
+              <p className="status">Showtime #{scanMutation.data.showtime_id}</p>
+            </div>
           )}
         </article>
       )}

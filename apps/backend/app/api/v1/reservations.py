@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -83,6 +83,31 @@ async def create_reservation(
         )
         reservation_read = await _get_reservation_read(session, reservation.id, user_id)
     return reservation_read
+
+
+@router.get("/active", response_model=ReservationRead | None)
+async def get_active_reservation(
+    showtime_id: int = Query(ge=1),
+    session: AsyncSession = Depends(get_db_session),
+    user_id: int = Depends(get_current_user_id),
+) -> ReservationRead | None:
+    async with session.begin():
+        await reservation_service.expire_overdue_holds(session)
+        active_reservation = (
+            await session.execute(
+                select(Reservation)
+                .where(
+                    Reservation.user_id == user_id,
+                    Reservation.showtime_id == showtime_id,
+                    Reservation.status == "ACTIVE",
+                )
+                .order_by(Reservation.created_at.desc())
+                .with_for_update()
+            )
+        ).scalars().first()
+        if active_reservation is None:
+            return None
+        return await _get_reservation_read(session, active_reservation.id, user_id)
 
 
 @router.get("/{reservation_id}", response_model=ReservationRead)

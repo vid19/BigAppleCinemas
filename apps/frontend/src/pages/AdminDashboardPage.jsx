@@ -40,7 +40,8 @@ export function AdminDashboardPage() {
     title: "",
     description: "",
     runtime_minutes: 110,
-    rating: "PG-13"
+    rating: "PG-13",
+    poster_url: ""
   });
   const [theaterForm, setTheaterForm] = useState({
     name: "",
@@ -59,7 +60,8 @@ export function AdminDashboardPage() {
   const [movieEditForm, setMovieEditForm] = useState({
     title: "",
     runtime_minutes: 120,
-    rating: "PG-13"
+    rating: "PG-13",
+    poster_url: ""
   });
   const [editingTheaterId, setEditingTheaterId] = useState(null);
   const [theaterEditForm, setTheaterEditForm] = useState({
@@ -79,7 +81,7 @@ export function AdminDashboardPage() {
 
   const showtimesQuery = useQuery({
     queryKey: ["admin-showtimes"],
-    queryFn: () => fetchShowtimes({ limit: 25, offset: 0 })
+    queryFn: () => fetchShowtimes({ includePast: true, limit: 25, offset: 0 })
   });
   const theatersQuery = useQuery({
     queryKey: ["admin-theaters"],
@@ -104,7 +106,7 @@ export function AdminDashboardPage() {
     mutationFn: createMovie,
     onSuccess: () => {
       setFeedback("Movie created.");
-      setMovieForm((prev) => ({ ...prev, title: "", description: "" }));
+      setMovieForm((prev) => ({ ...prev, title: "", description: "", poster_url: "" }));
       refreshQueries();
     },
     onError: (error) => setFeedback(error.message)
@@ -184,7 +186,11 @@ export function AdminDashboardPage() {
   const movieItems = moviesQuery.data?.items ?? [];
   const theaterItems = theatersQuery.data?.items ?? [];
   const showtimeItems = showtimesQuery.data?.items ?? [];
-  const movieOptions = useMemo(() => movieItems.map((movie) => ({ id: movie.id, title: movie.title })), [movieItems]);
+  const movieOptions = useMemo(
+    () => movieItems.map((movie) => ({ id: movie.id, title: movie.title })),
+    [movieItems]
+  );
+  const salesSnapshot = salesReportQuery.data;
 
   return (
     <section className="page page-shell admin-dashboard-page">
@@ -195,31 +201,39 @@ export function AdminDashboardPage() {
 
       {feedback && <p className="status">{feedback}</p>}
 
-      <article className="admin-card">
+      <article className="admin-card admin-sales-card">
         <h3>Sales snapshot</h3>
         {salesReportQuery.isLoading && <p className="status">Loading sales metrics...</p>}
         {salesReportQuery.isError && <p className="status error">Could not load sales metrics.</p>}
         {!salesReportQuery.isLoading && !salesReportQuery.isError && (
           <>
-            <div className="inline-fields">
-              <p className="status">Paid orders: {salesReportQuery.data.paid_orders}</p>
-              <p className="status">
-                Revenue: ${(salesReportQuery.data.gross_revenue_cents / 100).toFixed(2)}
-              </p>
+            <div className="admin-kpi-grid">
+              <article>
+                <p>Paid orders</p>
+                <strong>{salesSnapshot.paid_orders}</strong>
+              </article>
+              <article>
+                <p>Revenue</p>
+                <strong>${(salesSnapshot.gross_revenue_cents / 100).toFixed(2)}</strong>
+              </article>
+              <article>
+                <p>Tickets sold</p>
+                <strong>{salesSnapshot.tickets_sold}</strong>
+              </article>
+              <article>
+                <p>Active holds</p>
+                <strong>{salesSnapshot.active_holds}</strong>
+              </article>
             </div>
-            <div className="inline-fields">
-              <p className="status">Tickets sold: {salesReportQuery.data.tickets_sold}</p>
-              <p className="status">Active holds: {salesReportQuery.data.active_holds}</p>
-            </div>
-            {salesReportQuery.data.showtimes.length > 0 && (
-              <ul className="admin-list">
-                {salesReportQuery.data.showtimes.map((item) => (
+            {salesSnapshot.showtimes.length > 0 && (
+              <ul className="admin-list admin-report-list">
+                {salesSnapshot.showtimes.map((item) => (
                   <li key={item.showtime_id}>
                     <div className="admin-list-main">
                       <span>
                         #{item.showtime_id} {item.movie_title}
                       </span>
-                      <span>{item.occupancy_percent.toFixed(2)}% occupied</span>
+                      <span className="admin-pill">{item.occupancy_percent.toFixed(2)}% occupied</span>
                     </div>
                     <p className="status">
                       {item.theater_name} • {item.sold_seats}/{item.capacity} sold
@@ -233,12 +247,15 @@ export function AdminDashboardPage() {
       </article>
 
       <div className="admin-grid">
-        <article className="admin-card">
+        <article className="admin-card admin-form-card">
           <h3>Create movie</h3>
           <form
             onSubmit={(event) => {
               event.preventDefault();
-              createMovieMutation.mutate(movieForm);
+              createMovieMutation.mutate({
+                ...movieForm,
+                poster_url: movieForm.poster_url.trim() || null
+              });
             }}
           >
             <input
@@ -272,13 +289,20 @@ export function AdminDashboardPage() {
                 onChange={(event) => setMovieForm((prev) => ({ ...prev, rating: event.target.value }))}
               />
             </div>
+            <input
+              placeholder="Poster URL (optional)"
+              value={movieForm.poster_url}
+              onChange={(event) =>
+                setMovieForm((prev) => ({ ...prev, poster_url: event.target.value }))
+              }
+            />
             <button type="submit" disabled={createMovieMutation.isPending}>
               {createMovieMutation.isPending ? "Creating..." : "Create movie"}
             </button>
           </form>
         </article>
 
-        <article className="admin-card">
+        <article className="admin-card admin-form-card">
           <h3>Create theater</h3>
           <form
             onSubmit={(event) => {
@@ -326,7 +350,7 @@ export function AdminDashboardPage() {
           </form>
         </article>
 
-        <article className="admin-card">
+        <article className="admin-card admin-form-card">
           <h3>Create showtime</h3>
           <form
             onSubmit={(event) => {
@@ -395,7 +419,7 @@ export function AdminDashboardPage() {
       </div>
 
       <div className="admin-grid">
-        <article className="admin-card">
+        <article className="admin-card admin-data-card">
           <h3>Movies</h3>
           {moviesQuery.isLoading && <p className="status">Loading movies...</p>}
           {moviesQuery.isError && <p className="status error">Could not load movies.</p>}
@@ -408,14 +432,15 @@ export function AdminDashboardPage() {
                       #{movie.id} {movie.title}
                     </span>
                     <div className="admin-actions">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingMovieId(movie.id);
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingMovieId(movie.id);
                           setMovieEditForm({
                             title: movie.title,
                             runtime_minutes: movie.runtime_minutes,
-                            rating: movie.rating
+                            rating: movie.rating,
+                            poster_url: movie.poster_url || ""
                           });
                         }}
                       >
@@ -440,7 +465,8 @@ export function AdminDashboardPage() {
                           payload: {
                             title: movieEditForm.title,
                             runtime_minutes: Number(movieEditForm.runtime_minutes),
-                            rating: movieEditForm.rating
+                            rating: movieEditForm.rating,
+                            poster_url: movieEditForm.poster_url.trim() || null
                           }
                         });
                       }}
@@ -468,6 +494,16 @@ export function AdminDashboardPage() {
                           setMovieEditForm((prev) => ({ ...prev, rating: event.target.value }))
                         }
                       />
+                      <input
+                        placeholder="Poster URL"
+                        value={movieEditForm.poster_url}
+                        onChange={(event) =>
+                          setMovieEditForm((prev) => ({
+                            ...prev,
+                            poster_url: event.target.value
+                          }))
+                        }
+                      />
                       <div className="admin-actions">
                         <button type="submit" disabled={updateMovieMutation.isPending}>
                           Save
@@ -484,7 +520,7 @@ export function AdminDashboardPage() {
           )}
         </article>
 
-        <article className="admin-card">
+        <article className="admin-card admin-data-card">
           <h3>Theaters</h3>
           {theatersQuery.isLoading && <p className="status">Loading theaters...</p>}
           {theatersQuery.isError && <p className="status error">Could not load theaters.</p>}
@@ -571,7 +607,7 @@ export function AdminDashboardPage() {
           )}
         </article>
 
-        <article className="admin-card">
+        <article className="admin-card admin-data-card">
           <h3>Recent showtimes</h3>
           {showtimesQuery.isLoading && <p className="status">Loading showtimes...</p>}
           {showtimesQuery.isError && <p className="status error">Could not load showtimes.</p>}
