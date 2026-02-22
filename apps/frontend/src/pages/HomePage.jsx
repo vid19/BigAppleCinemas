@@ -69,6 +69,7 @@ export function HomePage() {
   const recommendationItems = recommendationsQuery.data?.items ?? [];
   const [dismissedRecommendationIds, setDismissedRecommendationIds] = useState([]);
   const [savedRecommendationIds, setSavedRecommendationIds] = useState([]);
+  const [lastHiddenRecommendation, setLastHiddenRecommendation] = useState(null);
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
 
   const recommendationFeedbackMutation = useMutation({
@@ -127,11 +128,27 @@ export function HomePage() {
     [dismissedRecommendationIds, recommendationItems]
   );
 
-  function handleRecommendationFeedback(movieId, eventType) {
+  const serverSavedRecommendationIds = useMemo(
+    () =>
+      recommendationItems
+        .filter((movie) => movie.reason === "Saved for later")
+        .map((movie) => movie.movie_id),
+    [recommendationItems]
+  );
+
+  const effectiveSavedRecommendationIds = useMemo(
+    () => new Set([...serverSavedRecommendationIds, ...savedRecommendationIds]),
+    [savedRecommendationIds, serverSavedRecommendationIds]
+  );
+
+  function handleRecommendationFeedback(movieId, eventType, { active = true, title } = {}) {
+    if (eventType === "NOT_INTERESTED" && active) {
+      setLastHiddenRecommendation({ movieId, title: title ?? "movie" });
+    }
     recommendationFeedbackMutation.mutate({
       movie_id: movieId,
       event_type: eventType,
-      active: true
+      active
     });
   }
 
@@ -355,22 +372,28 @@ export function HomePage() {
                     <Link to={`/movies/${movie.movie_id}`}>View showtimes</Link>
                     <div className="recommendation-actions">
                       <button
-                        className={`recommendation-action ${savedRecommendationIds.includes(movie.movie_id) ? "is-active" : ""}`}
+                        className={`recommendation-action ${effectiveSavedRecommendationIds.has(movie.movie_id) ? "is-active" : ""}`}
                         disabled={recommendationFeedbackMutation.isPending}
                         onClick={() =>
-                          handleRecommendationFeedback(movie.movie_id, "SAVE_FOR_LATER")
+                          handleRecommendationFeedback(movie.movie_id, "SAVE_FOR_LATER", {
+                            active: !effectiveSavedRecommendationIds.has(movie.movie_id),
+                            title: movie.title
+                          })
                         }
                         type="button"
                       >
-                        {savedRecommendationIds.includes(movie.movie_id)
-                          ? "Saved"
+                        {effectiveSavedRecommendationIds.has(movie.movie_id)
+                          ? "Saved (Undo)"
                           : "Save for later"}
                       </button>
                       <button
                         className="recommendation-action recommendation-action-muted"
                         disabled={recommendationFeedbackMutation.isPending}
                         onClick={() =>
-                          handleRecommendationFeedback(movie.movie_id, "NOT_INTERESTED")
+                          handleRecommendationFeedback(movie.movie_id, "NOT_INTERESTED", {
+                            active: true,
+                            title: movie.title
+                          })
                         }
                         type="button"
                       >
@@ -380,6 +403,31 @@ export function HomePage() {
                   </div>
                 </article>
               ))}
+            </div>
+          )}
+          {isAuthenticated && lastHiddenRecommendation && (
+            <div className="recommendation-undo-bar" role="status">
+              <p>
+                Hidden
+                {" "}
+                <strong>{lastHiddenRecommendation.title}</strong>
+                {" "}
+                from recommendations.
+              </p>
+              <button
+                disabled={recommendationFeedbackMutation.isPending}
+                onClick={() => {
+                  handleRecommendationFeedback(
+                    lastHiddenRecommendation.movieId,
+                    "NOT_INTERESTED",
+                    { active: false, title: lastHiddenRecommendation.title }
+                  );
+                  setLastHiddenRecommendation(null);
+                }}
+                type="button"
+              >
+                Undo
+              </button>
             </div>
           )}
         </section>

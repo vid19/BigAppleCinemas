@@ -574,6 +574,35 @@ body {
   color: #4c5f7c;
 }
 
+.recommendation-undo-bar {
+  margin-top: 0.85rem;
+  border: 1px solid #bfd4ef;
+  background: linear-gradient(180deg, #f4f9ff, #eaf3ff);
+  border-radius: 12px;
+  padding: 0.62rem 0.72rem;
+  display: flex;
+  gap: 0.65rem;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.recommendation-undo-bar p {
+  margin: 0;
+  color: #26466d;
+  font-size: 0.9rem;
+}
+
+.recommendation-undo-bar button {
+  border: 1px solid #9dbce0;
+  background: #fff;
+  color: #18395f;
+  border-radius: 999px;
+  padding: 0.3rem 0.68rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .home-steps-grid {
   display: grid;
   gap: 0.7rem;
