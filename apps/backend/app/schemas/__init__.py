@@ -1,5 +1,7 @@
 from app.schemas.auth import (
     AuthLoginRequest,
+    AuthLogoutRequest,
+    AuthRefreshRequest,
     AuthRegisterRequest,
     AuthTokenResponse,
     AuthUserRead,
@@ -22,6 +24,7 @@ from app.schemas.catalog import (
 from app.schemas.payment import (
     CheckoutDemoConfirmRequest,
     CheckoutFinalizeRead,
+    CheckoutOrderStatusRead,
     CheckoutSessionCreate,
     CheckoutSessionRead,
     StripeWebhookAck,
@@ -37,6 +40,8 @@ from app.schemas.portal import (
     MyOrderListResponse,
     MyTicketItem,
     MyTicketListResponse,
+    RecommendationEventRead,
+    RecommendationEventWrite,
     RecommendationFeedbackRead,
     RecommendationFeedbackWrite,
     TicketScanRequest,
@@ -46,6 +51,8 @@ from app.schemas.reservation import ReservationCreate, ReservationRead
 
 __all__ = [
     "AuthLoginRequest",
+    "AuthLogoutRequest",
+    "AuthRefreshRequest",
     "AuthRegisterRequest",
     "AuthTokenResponse",
     "AuthUserRead",
@@ -56,6 +63,7 @@ __all__ = [
     "MovieUpdate",
     "CheckoutDemoConfirmRequest",
     "CheckoutFinalizeRead",
+    "CheckoutOrderStatusRead",
     "CheckoutSessionCreate",
     "CheckoutSessionRead",
     "AdminSalesReportResponse",
@@ -66,6 +74,8 @@ __all__ = [
     "MyOrderListResponse",
     "MyTicketItem",
     "MyTicketListResponse",
+    "RecommendationEventRead",
+    "RecommendationEventWrite",
     "RecommendationFeedbackRead",
     "RecommendationFeedbackWrite",
     "ReservationCreate",

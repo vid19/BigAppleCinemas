@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy import select
@@ -10,7 +10,7 @@ from app.core.metrics import increment_metric
 from app.core.rate_limit import create_rate_limiter
 from app.db.session import get_db_session
 from app.models.order import Order, Ticket
-from app.models.showtime import Seat
+from app.models.showtime import Seat, Showtime
 from app.schemas.portal import TicketScanRequest, TicketScanResponse
 
 router = APIRouter()
@@ -34,11 +34,13 @@ async def scan_ticket(
 
     increment_metric("ticket_scan_attempt_total")
     async with session.begin():
+        now = datetime.now(tz=UTC)
         row = (
             await session.execute(
-                select(Ticket, Order.showtime_id, Seat.seat_code)
+                select(Ticket, Order.showtime_id, Seat.seat_code, Showtime.ends_at)
                 .join(Order, Order.id == Ticket.order_id)
                 .join(Seat, Seat.id == Ticket.seat_id)
+                .join(Showtime, Showtime.id == Order.showtime_id)
                 .where(Ticket.qr_token == payload.qr_token)
                 .with_for_update()
             )
@@ -51,7 +53,7 @@ async def scan_ticket(
                 message="Ticket not found",
             )
 
-        ticket, showtime_id, seat_code = row
+        ticket, showtime_id, seat_code, showtime_ends_at = row
         if ticket.status == "USED":
             increment_metric("ticket_scan_already_used_total")
             return TicketScanResponse(
@@ -75,8 +77,22 @@ async def scan_ticket(
                 message=f"Ticket is not valid for entry ({ticket.status})",
             )
 
+        if showtime_ends_at is not None:
+            expires_at = showtime_ends_at + timedelta(minutes=settings.ticket_active_grace_minutes)
+            if now > expires_at:
+                increment_metric("ticket_scan_invalid_total")
+                return TicketScanResponse(
+                    result="INVALID",
+                    ticket_id=ticket.id,
+                    order_id=ticket.order_id,
+                    showtime_id=showtime_id,
+                    seat_code=seat_code,
+                    used_at=ticket.used_at,
+                    message="Ticket expired after showtime ended",
+                )
+
         ticket.status = "USED"
-        ticket.used_at = datetime.now(tz=UTC)
+        ticket.used_at = now
         await session.flush()
         increment_metric("ticket_scan_valid_total")
         return TicketScanResponse(

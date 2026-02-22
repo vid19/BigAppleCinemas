@@ -3,6 +3,7 @@ from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_admin_user
+from app.core.metrics import get_metric_value
 from app.db.session import get_db_session
 from app.models.movie import Movie
 from app.models.order import Order, Ticket
@@ -102,4 +103,32 @@ async def sales_report(
         tickets_sold=tickets_sold,
         active_holds=active_holds,
         showtimes=showtimes,
+        recommendation_impressions=get_metric_value("recommendation_impression_total"),
+        recommendation_clicks=get_metric_value("recommendation_click_total"),
+        recommendation_saved=get_metric_value("recommendation_save_total"),
+        recommendation_hidden=get_metric_value("recommendation_hide_total"),
+        recommendation_ctr_percent=round(
+            (
+                get_metric_value("recommendation_click_total")
+                / max(1, get_metric_value("recommendation_impression_total"))
+            )
+            * 100,
+            2,
+        ),
+        recommendation_save_rate_percent=round(
+            (
+                get_metric_value("recommendation_save_total")
+                / max(1, get_metric_value("recommendation_impression_total"))
+            )
+            * 100,
+            2,
+        ),
+        recommendation_hide_rate_percent=round(
+            (
+                get_metric_value("recommendation_hide_total")
+                / max(1, get_metric_value("recommendation_impression_total"))
+            )
+            * 100,
+            2,
+        ),
     )

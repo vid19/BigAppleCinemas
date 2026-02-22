@@ -34,7 +34,7 @@ async def _ensure_upcoming_showtimes(
                 select(Showtime.id).where(
                     Showtime.movie_id == movie.id,
                     Showtime.starts_at >= now,
-                )
+                ).limit(1)
             )
         ).scalar_one_or_none()
         if has_upcoming is not None:

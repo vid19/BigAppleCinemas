@@ -2,7 +2,11 @@ import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
-import { confirmDemoCheckout, fetchReservation } from "../api/catalog";
+import {
+  confirmDemoCheckout,
+  fetchCheckoutOrderStatus,
+  fetchReservation
+} from "../api/catalog";
 
 const PAYMENT_METHODS = [
   { id: "CARD", label: "Card" },
@@ -35,6 +39,7 @@ export function CheckoutProcessingPage() {
   const totalCents = Number(searchParams.get("total_cents"));
   const currency = searchParams.get("currency") || "USD";
   const provider = searchParams.get("provider") || "MOCK_STRIPE";
+  const checkoutStatus = searchParams.get("status");
   const seatCountFromParams = Number(searchParams.get("seat_count"));
 
   const [paymentMethod, setPaymentMethod] = useState("CARD");
@@ -53,6 +58,15 @@ export function CheckoutProcessingPage() {
     queryFn: () => fetchReservation(reservationId),
     enabled: Number.isFinite(reservationId) && reservationId > 0
   });
+  const orderStatusQuery = useQuery({
+    queryKey: ["checkout-order-status", orderId],
+    queryFn: () => fetchCheckoutOrderStatus(orderId),
+    enabled: Number.isFinite(orderId) && orderId > 0,
+    refetchInterval: (query) => {
+      const statusValue = query.state.data?.order_status;
+      return statusValue === "PAID" || statusValue === "FAILED" ? false : 3000;
+    }
+  });
 
   const heldSeatIds = reservationQuery.data?.seat_ids ?? [];
   const seatCount = heldSeatIds.length || (Number.isFinite(seatCountFromParams) ? seatCountFromParams : 0);
@@ -62,6 +76,12 @@ export function CheckoutProcessingPage() {
   const confirmMutation = useMutation({
     mutationFn: () => confirmDemoCheckout({ order_id: orderId })
   });
+  const liveOrderStatus = orderStatusQuery.data?.order_status;
+  const isPaid = liveOrderStatus === "PAID" || confirmMutation.data?.order_status === "PAID";
+  const shouldShowDemoForm = provider === "MOCK_STRIPE" && !isPaid;
+  const paymentResultTickets = confirmMutation.data?.tickets ?? orderStatusQuery.data?.tickets ?? [];
+  const paymentResultTicketCount =
+    confirmMutation.data?.ticket_count ?? orderStatusQuery.data?.ticket_count ?? 0;
 
   function validateForm() {
     if (paymentMethod !== "CARD") {
@@ -126,7 +146,17 @@ export function CheckoutProcessingPage() {
             Order #{orderId} is reserved. Finish payment before your seat hold expires.
           </p>
 
-          {!confirmMutation.isSuccess && (
+          {provider !== "MOCK_STRIPE" && (
+            <p className="checkout-demo-note">
+              {checkoutStatus === "success"
+                ? "Stripe redirected back. Waiting for webhook confirmation..."
+                : checkoutStatus === "cancel"
+                  ? "Stripe checkout was canceled. You can retry from seat selection."
+                  : "Complete payment in Stripe, then return here for status."}
+            </p>
+          )}
+
+          {shouldShowDemoForm && (
             <form className="checkout-form" onSubmit={handleSubmitPayment}>
               <div className="payment-method-grid">
                 {PAYMENT_METHODS.map((method) => (
@@ -230,16 +260,25 @@ export function CheckoutProcessingPage() {
           {(formError || confirmMutation.isError) && (
             <p className="status error">{formError || confirmMutation.error.message}</p>
           )}
+          {orderStatusQuery.isError && (
+            <p className="status error">Could not fetch live order status.</p>
+          )}
+          {provider !== "MOCK_STRIPE" && orderStatusQuery.isLoading && (
+            <p className="status">Checking payment status...</p>
+          )}
+          {provider !== "MOCK_STRIPE" && !isPaid && liveOrderStatus === "PENDING" && (
+            <p className="status">Payment pending confirmation from webhook...</p>
+          )}
 
-          {confirmMutation.isSuccess && (
+          {isPaid && (
             <div className="checkout-success">
               <p>
-                Payment status: <strong>{confirmMutation.data.order_status}</strong>
+                Payment status: <strong>PAID</strong>
               </p>
-              <p>Tickets generated: {confirmMutation.data.ticket_count}</p>
-              {confirmMutation.data.tickets.length > 0 && (
+              <p>Tickets generated: {paymentResultTicketCount}</p>
+              {paymentResultTickets.length > 0 && (
                 <ul>
-                  {confirmMutation.data.tickets.map((ticket) => (
+                  {paymentResultTickets.map((ticket) => (
                     <li key={ticket.id}>
                       Seat #{ticket.seat_id} • Token {ticket.qr_token.slice(0, 16)}...
                     </li>
@@ -272,7 +311,11 @@ export function CheckoutProcessingPage() {
           <p>
             <strong>Total:</strong> {totalLabel}
           </p>
-          <p className="checkout-secure-note">Secure demo checkout • idempotent order handling</p>
+          <p className="checkout-secure-note">
+            {provider === "MOCK_STRIPE"
+              ? "Secure demo checkout • idempotent order handling"
+              : "Secure Stripe checkout • webhook idempotency enabled"}
+          </p>
         </aside>
       </div>
     </section>

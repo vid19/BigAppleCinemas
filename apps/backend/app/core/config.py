@@ -13,14 +13,20 @@ class Settings(BaseSettings):
     redis_url: str
     jwt_secret: str
     jwt_algorithm: str = "HS256"
-    jwt_access_token_minutes: int = 240
+    jwt_access_token_minutes: int = 30
+    jwt_refresh_token_minutes: int = 60 * 24 * 14
     reservation_hold_minutes: int = 8
     bootstrap_demo_data: bool = True
     cors_allow_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
     cache_enabled: bool = True
     cache_ttl_seconds: int = 60
     reservation_expiry_sweep_seconds: int = 30
+    stripe_secret_key: str = ""
+    stripe_publishable_key: str = ""
+    stripe_webhook_signing_secret: str = ""
     stripe_webhook_secret: str = "change-me"
+    stripe_checkout_success_url: str = "http://localhost:5173/checkout/processing"
+    stripe_checkout_cancel_url: str = "http://localhost:5173/checkout/processing"
     webhook_idempotency_ttl_seconds: int = 86400
     staff_scan_token: str = "local-staff"
     rate_limit_auth_login: int = 10
@@ -31,6 +37,7 @@ class Settings(BaseSettings):
     rate_limit_checkout_window_seconds: int = 60
     rate_limit_ticket_scan: int = 60
     rate_limit_ticket_scan_window_seconds: int = 60
+    ticket_active_grace_minutes: int = 20
     recommendation_cache_ttl_seconds: int = 180
     recommendation_similarity_top_k: int = 16
     recommendation_ranker_variant: str = "A"

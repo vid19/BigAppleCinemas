@@ -24,6 +24,16 @@ class AuthLoginRequest(BaseModel):
 
 class AuthTokenResponse(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str = "bearer"
-    expires_in_seconds: int
+    access_expires_in_seconds: int
+    refresh_expires_in_seconds: int
     user: AuthUserRead
+
+
+class AuthRefreshRequest(BaseModel):
+    refresh_token: str = Field(min_length=20, max_length=4096)
+
+
+class AuthLogoutRequest(BaseModel):
+    refresh_token: str = Field(min_length=20, max_length=4096)

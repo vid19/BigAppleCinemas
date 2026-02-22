@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -6,6 +6,7 @@ import { useAuth } from "../auth/AuthContext";
 import {
   fetchMovies,
   fetchMyRecommendations,
+  submitRecommendationEvent,
   submitRecommendationFeedback
 } from "../api/catalog";
 
@@ -71,6 +72,7 @@ export function HomePage() {
   const [savedRecommendationIds, setSavedRecommendationIds] = useState([]);
   const [lastHiddenRecommendation, setLastHiddenRecommendation] = useState(null);
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
+  const seenRecommendationImpressionsRef = useRef(new Set());
 
   const recommendationFeedbackMutation = useMutation({
     mutationFn: submitRecommendationFeedback,
@@ -92,6 +94,10 @@ export function HomePage() {
       queryClient.invalidateQueries({ queryKey: ["home-recommendations"] });
     }
   });
+  const recommendationEventMutation = useMutation({
+    mutationFn: submitRecommendationEvent
+  });
+  const trackRecommendationEvent = recommendationEventMutation.mutate;
 
   function formatShowtime(dateValue) {
     return new Date(dateValue).toLocaleString([], {
@@ -151,6 +157,29 @@ export function HomePage() {
       active
     });
   }
+
+  useEffect(() => {
+    if (!isAuthenticated || visibleRecommendations.length === 0) {
+      return;
+    }
+    const impressionIds = visibleRecommendations
+      .slice(0, 6)
+      .map((movie) => movie.movie_id)
+      .filter((movieId) => !seenRecommendationImpressionsRef.current.has(movieId));
+    impressionIds.forEach((movieId) => {
+      seenRecommendationImpressionsRef.current.add(movieId);
+      trackRecommendationEvent({
+        movie_id: movieId,
+        event_type: "IMPRESSION"
+      });
+    });
+  }, [isAuthenticated, trackRecommendationEvent, visibleRecommendations]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      seenRecommendationImpressionsRef.current.clear();
+    }
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (activeSlideIndex >= bannerSlides.length) {
@@ -369,7 +398,17 @@ export function HomePage() {
                     <small>
                       Next showtime: {formatShowtime(movie.next_showtime_starts_at)}
                     </small>
-                    <Link to={`/movies/${movie.movie_id}`}>View showtimes</Link>
+                    <Link
+                      to={`/movies/${movie.movie_id}`}
+                      onClick={() =>
+                        trackRecommendationEvent({
+                          movie_id: movie.movie_id,
+                          event_type: "CLICK"
+                        })
+                      }
+                    >
+                      View showtimes
+                    </Link>
                     <div className="recommendation-actions">
                       <button
                         className={`recommendation-action ${effectiveSavedRecommendationIds.has(movie.movie_id) ? "is-active" : ""}`}

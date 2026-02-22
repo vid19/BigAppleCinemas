@@ -10,6 +10,8 @@ import {
   fetchShowtimeSeats
 } from "../api/catalog";
 
+const CHECKOUT_PROVIDER = import.meta.env.VITE_CHECKOUT_PROVIDER || "MOCK_STRIPE";
+
 function formatDateTime(dateValue) {
   return new Date(dateValue).toLocaleString([], {
     month: "short",
@@ -77,6 +79,10 @@ export function SeatSelectionPage() {
   const checkoutMutation = useMutation({
     mutationFn: createCheckoutSession,
     onSuccess: (payload) => {
+      if (payload.checkout_url?.startsWith("http")) {
+        window.location.assign(payload.checkout_url);
+        return;
+      }
       const params = new globalThis.URLSearchParams({
         order_id: String(payload.order_id),
         session_id: payload.provider_session_id,
@@ -262,7 +268,12 @@ export function SeatSelectionPage() {
               <button
                 type="button"
                 disabled={checkoutMutation.isPending}
-                onClick={() => checkoutMutation.mutate({ reservation_id: reservation.id })}
+                onClick={() =>
+                  checkoutMutation.mutate({
+                    reservation_id: reservation.id,
+                    provider: CHECKOUT_PROVIDER
+                  })
+                }
               >
                 {checkoutMutation.isPending ? "Preparing checkout..." : "Review and pay"}
               </button>

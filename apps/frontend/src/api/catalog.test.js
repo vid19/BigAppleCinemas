@@ -8,6 +8,7 @@ import {
   createReservation,
   deleteMovie,
   fetchAuthMe,
+  fetchCheckoutOrderStatus,
   fetchAdminSalesReport,
   fetchActiveReservation,
   fetchMyOrders,
@@ -17,8 +18,11 @@ import {
   fetchShowtimes,
   fetchShowtimeSeats,
   loginUser,
+  logoutUser,
+  refreshAuthToken,
   registerUser,
   setAccessToken,
+  submitRecommendationEvent,
   submitRecommendationFeedback,
   scanTicket
 } from "./catalog";
@@ -184,6 +188,19 @@ describe("catalog api client", () => {
     expect(fetchMock.mock.calls[1][0]).toContain("/api/checkout/demo/confirm");
   });
 
+  it("fetches checkout order status", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ order_id: 9, order_status: "PENDING", ticket_count: 0, tickets: [] })
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const payload = await fetchCheckoutOrderStatus(9);
+    expect(payload.order_id).toBe(9);
+    expect(fetchMock.mock.calls[0][0]).toContain("/api/checkout/orders/9");
+  });
+
   it("fetches user portal data and sales report", async () => {
     const fetchMock = vi
       .fn()
@@ -243,6 +260,20 @@ describe("catalog api client", () => {
     expect(requestOptions.body).toContain('"event_type":"SAVE_FOR_LATER"');
   });
 
+  it("records recommendation impression event", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ movie_id: 7, event_type: "IMPRESSION", recorded: true })
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await submitRecommendationEvent({ movie_id: 7, event_type: "IMPRESSION" });
+
+    expect(fetchMock.mock.calls[0][0]).toContain("/api/me/recommendations/events");
+    expect(fetchMock.mock.calls[0][1].method).toBe("POST");
+  });
+
   it("sends staff header for ticket scan", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -263,27 +294,41 @@ describe("catalog api client", () => {
       .mockResolvedValueOnce({
         ok: true,
         status: 201,
-        json: async () => ({ access_token: "token", user: { id: 1 } })
+        json: async () => ({ access_token: "token", refresh_token: "refresh", user: { id: 1 } })
       })
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
-        json: async () => ({ access_token: "token", user: { id: 1 } })
+        json: async () => ({ access_token: "token", refresh_token: "refresh", user: { id: 1 } })
       })
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
         json: async () => ({ id: 1, email: "demo@bigapplecinemas.local", role: "ADMIN" })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ access_token: "new-token", refresh_token: "new-refresh", user: { id: 1 } })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 204,
+        json: async () => ({})
       });
     vi.stubGlobal("fetch", fetchMock);
 
     await registerUser({ email: "demo@bigapplecinemas.local", password: "Password123!" });
     await loginUser({ email: "demo@bigapplecinemas.local", password: "Password123!" });
     await fetchAuthMe();
+    await refreshAuthToken({ refresh_token: "refresh" });
+    await logoutUser({ refresh_token: "new-refresh" });
 
     expect(fetchMock.mock.calls[0][0]).toContain("/api/auth/register");
     expect(fetchMock.mock.calls[1][0]).toContain("/api/auth/login");
     expect(fetchMock.mock.calls[2][0]).toContain("/api/auth/me");
+    expect(fetchMock.mock.calls[3][0]).toContain("/api/auth/refresh");
+    expect(fetchMock.mock.calls[4][0]).toContain("/api/auth/logout");
   });
 
   it("adds authorization header when token is set", async () => {

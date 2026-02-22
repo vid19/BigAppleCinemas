@@ -20,8 +20,10 @@ Base URL: `http://localhost:8000/api`
 
 ## Auth
 
-- `POST /auth/register` (creates user + returns JWT)
-- `POST /auth/login` (rate limited, returns JWT)
+- `POST /auth/register` (creates user + returns access+refresh tokens)
+- `POST /auth/login` (rate limited, returns access+refresh tokens)
+- `POST /auth/refresh` (rotates refresh token and returns new access+refresh pair)
+- `POST /auth/logout` (revokes provided refresh token for current user)
 - `GET /auth/me` (requires bearer token)
 
 ## Booking
@@ -36,11 +38,13 @@ Base URL: `http://localhost:8000/api`
 
 - `POST /checkout/session`
   - Requires bearer token. Creates pending order from active reservation (server-side total calculation, rate limited)
+- `GET /checkout/orders/{order_id}`
+  - Requires bearer token. Returns current order status for processing page polling
 - `POST /checkout/demo/confirm`
   - Requires bearer token. Local demo endpoint to finalize pending order as paid
 - `POST /webhooks/stripe`
   - Idempotent webhook consumer for `checkout.session.completed`
-  - Requires `x-webhook-secret` header
+  - Supports real Stripe signature header (`stripe-signature`) or local fallback `x-webhook-secret`
 
 ## User Portal
 
@@ -48,8 +52,10 @@ Base URL: `http://localhost:8000/api`
 - `GET /me/orders`
 - `GET /me/recommendations`
 - `POST /me/recommendations/feedback`
+- `POST /me/recommendations/events`
   - All require bearer token
   - Feedback `event_type`: `NOT_INTERESTED` or `SAVE_FOR_LATER`
+  - Event tracking `event_type`: `IMPRESSION` or `CLICK`
   - Ranking blends personalized similarity + popularity + freshness + diversity
   - Response includes explainability text in `reason`
 

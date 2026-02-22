@@ -225,6 +225,28 @@ export function AdminDashboardPage() {
                 <strong>{salesSnapshot.active_holds}</strong>
               </article>
             </div>
+            <div className="admin-kpi-grid admin-kpi-grid-secondary">
+              <article>
+                <p>Reco impressions</p>
+                <strong>{salesSnapshot.recommendation_impressions}</strong>
+              </article>
+              <article>
+                <p>Reco clicks</p>
+                <strong>{salesSnapshot.recommendation_clicks}</strong>
+              </article>
+              <article>
+                <p>Reco CTR</p>
+                <strong>{salesSnapshot.recommendation_ctr_percent.toFixed(2)}%</strong>
+              </article>
+              <article>
+                <p>Save rate</p>
+                <strong>{salesSnapshot.recommendation_save_rate_percent.toFixed(2)}%</strong>
+              </article>
+              <article>
+                <p>Hide rate</p>
+                <strong>{salesSnapshot.recommendation_hide_rate_percent.toFixed(2)}%</strong>
+              </article>
+            </div>
             {salesSnapshot.showtimes.length > 0 && (
               <ul className="admin-list admin-report-list">
                 {salesSnapshot.showtimes.map((item) => (

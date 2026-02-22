@@ -33,3 +33,27 @@ Prevent seat oversell under concurrent reservation attempts.
   - releases an active hold and marks reservation `CANCELED`
 - `GET /api/reservations/{id}`:
   - returns current reservation state after applying expiry cleanup
+
+## Pseudocode
+
+```text
+BEGIN;
+SELECT * FROM showtime_seat_status
+WHERE showtime_id=:showtime_id AND seat_id IN (...)
+FOR UPDATE;
+
+IF any seat.status != AVAILABLE:
+  ROLLBACK; return 409
+
+INSERT reservation(..., status=ACTIVE, expires_at=now+8m)
+INSERT reservation_seats(...)
+UPDATE showtime_seat_status
+  SET status=HELD, held_by_reservation_id=:reservation_id
+COMMIT;
+```
+
+## Ticket Entry Window
+
+- Scanner validity is not only `ticket.status == VALID`.
+- It also enforces `now <= showtime.ends_at + TICKET_ACTIVE_GRACE_MINUTES`.
+- After this window, scan returns `INVALID` with an expired message and does not consume the ticket.

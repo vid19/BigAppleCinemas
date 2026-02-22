@@ -22,6 +22,8 @@ from app.schemas.portal import (
     MyOrderListResponse,
     MyTicketItem,
     MyTicketListResponse,
+    RecommendationEventRead,
+    RecommendationEventWrite,
     RecommendationFeedbackRead,
     RecommendationFeedbackWrite,
 )
@@ -116,6 +118,7 @@ async def list_my_tickets(
             Theater.name.label("theater_name"),
             Showtime.id.label("showtime_id"),
             Showtime.starts_at.label("showtime_starts_at"),
+            Showtime.ends_at.label("showtime_ends_at"),
             Ticket.used_at,
             Ticket.created_at,
         )
@@ -219,11 +222,44 @@ async def submit_recommendation_feedback(
 
     await delete_cache_prefix(f"recommendations:{user_id}:")
     increment_metric("recommendation_feedback_total")
+    if payload.active and payload.event_type == SAVE_FOR_LATER:
+        increment_metric("recommendation_save_total")
+    if payload.active and payload.event_type == NOT_INTERESTED:
+        increment_metric("recommendation_hide_total")
     return RecommendationFeedbackRead(
         movie_id=payload.movie_id,
         event_type=payload.event_type,
         active=payload.active,
         recorded_at=recorded_at,
+    )
+
+
+@router.post(
+    "/recommendations/events",
+    response_model=RecommendationEventRead,
+    status_code=status.HTTP_200_OK,
+)
+async def record_recommendation_event(
+    payload: RecommendationEventWrite,
+    session: AsyncSession = Depends(get_db_session),
+    user_id: int = Depends(get_current_user_id),
+) -> RecommendationEventRead:
+    movie_exists = (
+        await session.execute(select(Movie.id).where(Movie.id == payload.movie_id))
+    ).scalar_one_or_none()
+    if movie_exists is None:
+        raise HTTPException(status_code=404, detail="Movie not found")
+
+    metric_name = (
+        "recommendation_impression_total"
+        if payload.event_type == "IMPRESSION"
+        else "recommendation_click_total"
+    )
+    increment_metric(metric_name)
+    return RecommendationEventRead(
+        movie_id=payload.movie_id,
+        event_type=payload.event_type,
+        recorded=True,
     )
 
 
