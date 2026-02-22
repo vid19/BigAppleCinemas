@@ -79,16 +79,22 @@ body {
   color: #fff;
   border-radius: 16px;
   padding: 1.5rem;
+  position: relative;
+  overflow: hidden;
 }
 
 .hero-card h2 {
   margin: 0.5rem 0;
   font-size: 1.9rem;
+  position: relative;
+  z-index: 1;
 }
 
 .hero-card p {
   margin: 0 0 1rem;
   color: #e7f0ff;
+  position: relative;
+  z-index: 1;
 }
 
 .hero-kicker {
@@ -96,6 +102,8 @@ body {
   font-size: 0.8rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  position: relative;
+  z-index: 1;
 }
 
 .primary-link {
@@ -112,6 +120,8 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 0.6rem;
+  position: relative;
+  z-index: 1;
 }
 
 .secondary-link {
@@ -127,6 +137,7 @@ body {
 .home-page {
   display: grid;
   gap: 1rem;
+  max-width: 1220px;
 }
 
 .home-layout {
@@ -174,21 +185,74 @@ body {
 .home-movie-card {
   border: 1px solid var(--line);
   border-radius: 10px;
-  padding: 0.75rem;
+  overflow: hidden;
   background: #f6f9fe;
 }
 
-.home-movie-card h4 {
-  margin: 0;
+.home-movie-banner {
+  height: 175px;
+  position: relative;
+  background: linear-gradient(145deg, #0f2b51, #2d5c95);
+}
+
+.home-movie-banner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transform: scale(1.02);
+  transition: transform 240ms ease;
+}
+
+.home-movie-card:hover .home-movie-banner img {
+  transform: scale(1.08);
+}
+
+.home-movie-banner span {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #dbe9ff;
+  font-size: 2.35rem;
+  font-weight: 800;
+}
+
+.home-movie-banner-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(7, 18, 34, 0.12) 0%,
+    rgba(7, 18, 34, 0.56) 58%,
+    rgba(7, 18, 34, 0.84) 100%
+  );
+}
+
+.home-movie-banner-copy {
+  position: absolute;
+  left: 0.7rem;
+  right: 0.7rem;
+  bottom: 0.6rem;
+  color: #f4f8ff;
+}
+
+.home-movie-banner-copy strong {
+  display: block;
   font-size: 1rem;
+  line-height: 1.2;
 }
 
-.home-movie-card p {
-  margin: 0.35rem 0 0.55rem;
-  color: var(--ink-muted);
+.home-movie-banner-copy small {
+  opacity: 0.9;
 }
 
-.home-movie-card a {
+.home-movie-card-body {
+  padding: 0.65rem 0.75rem 0.75rem;
+}
+
+.home-movie-card-body a {
   color: var(--brand);
   text-decoration: none;
   font-weight: 700;
@@ -258,6 +322,44 @@ body {
 .home-step-card p {
   margin: 0;
   color: var(--ink-muted);
+}
+
+.hero-glow {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(2px);
+  opacity: 0.58;
+  pointer-events: none;
+  animation: heroDrift 12s ease-in-out infinite;
+}
+
+.hero-glow-one {
+  width: 220px;
+  height: 220px;
+  top: -90px;
+  right: -30px;
+  background: radial-gradient(circle at center, #8cbcff 0%, rgba(140, 188, 255, 0) 68%);
+}
+
+.hero-glow-two {
+  width: 170px;
+  height: 170px;
+  bottom: -70px;
+  right: 180px;
+  background: radial-gradient(circle at center, #c7dcff 0%, rgba(199, 220, 255, 0) 72%);
+  animation-delay: 1.8s;
+}
+
+@keyframes heroDrift {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(-10px, 8px, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
 }
 
 .search-row {
@@ -761,6 +863,10 @@ body {
 
   .home-steps-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .home-movie-banner {
+    height: 190px;
   }
 
   .seat-layout-wrap {

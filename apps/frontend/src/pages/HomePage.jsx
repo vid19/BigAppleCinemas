@@ -30,6 +30,8 @@ export function HomePage() {
   return (
     <section className="page home-page">
       <div className="hero-card">
+        <div className="hero-glow hero-glow-one" aria-hidden="true" />
+        <div className="hero-glow hero-glow-two" aria-hidden="true" />
         <p className="hero-kicker">Big Apple Cinemas</p>
         <h2>Book your next movie night in minutes</h2>
         <p>
@@ -66,11 +68,23 @@ export function HomePage() {
           <div className="home-movie-grid">
             {featuredMovies.map((movie) => (
               <article className="home-movie-card" key={movie.id}>
-                <h4>{movie.title}</h4>
-                <p>
-                  {movie.rating} • {movie.runtime_minutes} min
-                </p>
-                <Link to={`/movies/${movie.id}`}>Showtimes</Link>
+                <div className="home-movie-banner">
+                  {movie.poster_url ? (
+                    <img src={movie.poster_url} alt={`${movie.title} poster`} loading="lazy" />
+                  ) : (
+                    <span>{movie.title.slice(0, 1)}</span>
+                  )}
+                  <div className="home-movie-banner-overlay" />
+                  <div className="home-movie-banner-copy">
+                    <strong>{movie.title}</strong>
+                    <small>
+                      {movie.rating} • {movie.runtime_minutes} min
+                    </small>
+                  </div>
+                </div>
+                <div className="home-movie-card-body">
+                  <Link to={`/movies/${movie.id}`}>Showtimes</Link>
+                </div>
               </article>
             ))}
           </div>
