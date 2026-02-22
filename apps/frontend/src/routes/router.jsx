@@ -1,5 +1,6 @@
 import { createBrowserRouter } from "react-router-dom";
 
+import { AdminDashboardPage } from "../pages/AdminDashboardPage";
 import { AppShell } from "../components/AppShell";
 import { HomePage } from "../pages/HomePage";
 import { MovieDetailPage } from "../pages/MovieDetailPage";
@@ -17,6 +18,7 @@ export const router = createBrowserRouter([
       { index: true, element: <HomePage /> },
       { path: "movies", element: <MoviesPage /> },
       { path: "movies/:movieId", element: <MovieDetailPage /> },
+      { path: "admin", element: <AdminDashboardPage /> },
       { path: "showtimes/:showtimeId/seats", element: <SeatSelectionPage /> },
       { path: "*", element: <NotFoundPage /> }
     ]
