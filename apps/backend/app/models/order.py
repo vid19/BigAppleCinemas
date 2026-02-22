@@ -12,7 +12,11 @@ class Order(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
     showtime_id: Mapped[int] = mapped_column(ForeignKey("showtimes.id"), nullable=False, index=True)
-    reservation_id: Mapped[int] = mapped_column(ForeignKey("reservations.id"), nullable=False, unique=True)
+    reservation_id: Mapped[int] = mapped_column(
+        ForeignKey("reservations.id"),
+        nullable=False,
+        unique=True,
+    )
     status: Mapped[str] = mapped_column(String(30), default="PENDING", nullable=False, index=True)
     total_cents: Mapped[int] = mapped_column(nullable=False)
     currency: Mapped[str] = mapped_column(String(3), default="USD", nullable=False)
