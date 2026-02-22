@@ -152,3 +152,102 @@ def test_showtimes_hide_past_by_default(client: TestClient) -> None:
     assert client.delete(f"/api/admin/showtimes/{past_showtime_id}").status_code == 204
     assert client.delete(f"/api/admin/showtimes/{future_showtime_id}").status_code == 204
     assert client.delete(f"/api/admin/movies/{movie_id}").status_code == 204
+
+
+def test_movie_delete_cascades_unbooked_showtimes(client: TestClient) -> None:
+    create_movie_response = client.post(
+        "/api/admin/movies",
+        json={
+            "title": "Delete Cascade Movie",
+            "description": "Movie used to validate cascade delete behavior",
+            "runtime_minutes": 100,
+            "rating": "PG-13",
+        },
+    )
+    assert create_movie_response.status_code == 201
+    movie_id = create_movie_response.json()["id"]
+
+    starts_at = datetime.now(tz=UTC).replace(microsecond=0) + timedelta(hours=10)
+    ends_at = starts_at + timedelta(hours=2)
+    create_showtime_response = client.post(
+        "/api/admin/showtimes",
+        json={
+            "movie_id": movie_id,
+            "auditorium_id": 1,
+            "starts_at": starts_at.isoformat(),
+            "ends_at": ends_at.isoformat(),
+            "status": "SCHEDULED",
+        },
+    )
+    assert create_showtime_response.status_code == 201
+
+    delete_response = client.delete(f"/api/admin/movies/{movie_id}")
+    assert delete_response.status_code == 204
+
+    showtime_list_response = client.get(
+        "/api/showtimes",
+        params={"movie_id": movie_id, "include_past": "true", "limit": 10, "offset": 0},
+    )
+    assert showtime_list_response.status_code == 200
+    assert showtime_list_response.json()["total"] == 0
+
+
+def test_movie_delete_rejected_when_orders_exist(client: TestClient) -> None:
+    create_movie_response = client.post(
+        "/api/admin/movies",
+        json={
+            "title": "Delete Blocked Movie",
+            "description": "Movie used to validate order-protected delete behavior",
+            "runtime_minutes": 108,
+            "rating": "PG-13",
+        },
+    )
+    assert create_movie_response.status_code == 201
+    movie_id = create_movie_response.json()["id"]
+
+    starts_at = datetime.now(tz=UTC).replace(microsecond=0) + timedelta(hours=11)
+    ends_at = starts_at + timedelta(hours=2)
+    create_showtime_response = client.post(
+        "/api/admin/showtimes",
+        json={
+            "movie_id": movie_id,
+            "auditorium_id": 1,
+            "starts_at": starts_at.isoformat(),
+            "ends_at": ends_at.isoformat(),
+            "status": "SCHEDULED",
+        },
+    )
+    assert create_showtime_response.status_code == 201
+    showtime_id = create_showtime_response.json()["id"]
+
+    seats_response = client.get(f"/api/showtimes/{showtime_id}/seats")
+    assert seats_response.status_code == 200
+    available_seat = next(
+        (seat for seat in seats_response.json()["seats"] if seat["status"] == "AVAILABLE"),
+        None,
+    )
+    assert available_seat is not None
+
+    reservation_response = client.post(
+        "/api/reservations",
+        json={"showtime_id": showtime_id, "seat_ids": [available_seat["seat_id"]]},
+    )
+    assert reservation_response.status_code == 201
+    reservation_id = reservation_response.json()["id"]
+
+    checkout_response = client.post(
+        "/api/checkout/session",
+        json={"reservation_id": reservation_id},
+    )
+    assert checkout_response.status_code == 201
+    order_id = checkout_response.json()["order_id"]
+
+    confirm_response = client.post(
+        "/api/checkout/demo/confirm",
+        json={"order_id": order_id},
+    )
+    assert confirm_response.status_code == 200
+
+    delete_response = client.delete(f"/api/admin/movies/{movie_id}")
+    assert delete_response.status_code == 409
+    assert "tickets/orders exist" in delete_response.json()["detail"]

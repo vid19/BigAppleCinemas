@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -7,7 +7,9 @@ from app.api.deps import require_admin_user
 from app.core.cache import delete_cache_prefix
 from app.db.session import get_db_session
 from app.models.movie import Movie
-from app.models.reservation import ShowtimeSeatStatus
+from app.models.order import Order
+from app.models.recommendation import MovieSimilarity, UserMovieEvent
+from app.models.reservation import Reservation, ReservationSeat, ShowtimeSeatStatus
 from app.models.showtime import Auditorium, Showtime, Theater
 from app.schemas.catalog import (
     MovieCreate,
@@ -102,6 +104,48 @@ async def delete_movie(
     if movie is None:
         raise HTTPException(status_code=404, detail="Movie not found")
 
+    showtime_ids = (
+        await session.execute(select(Showtime.id).where(Showtime.movie_id == movie_id))
+    ).scalars().all()
+    if showtime_ids:
+        linked_order_count = (
+            await session.execute(
+                select(func.count(Order.id)).where(Order.showtime_id.in_(showtime_ids))
+            )
+        ).scalar_one()
+        if linked_order_count > 0:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "Movie cannot be deleted because tickets/orders exist for its showtimes. "
+                    "Delete or cancel those orders first."
+                ),
+            )
+
+        reservation_ids = (
+            await session.execute(
+                select(Reservation.id).where(Reservation.showtime_id.in_(showtime_ids))
+            )
+        ).scalars().all()
+        if reservation_ids:
+            await session.execute(
+                delete(ReservationSeat).where(ReservationSeat.reservation_id.in_(reservation_ids))
+            )
+        await session.execute(delete(Reservation).where(Reservation.showtime_id.in_(showtime_ids)))
+        await session.execute(
+            delete(ShowtimeSeatStatus).where(ShowtimeSeatStatus.showtime_id.in_(showtime_ids))
+        )
+        await session.execute(delete(Showtime).where(Showtime.id.in_(showtime_ids)))
+
+    await session.execute(delete(UserMovieEvent).where(UserMovieEvent.movie_id == movie_id))
+    await session.execute(
+        delete(MovieSimilarity).where(
+            or_(
+                MovieSimilarity.movie_id == movie_id,
+                MovieSimilarity.similar_movie_id == movie_id,
+            )
+        )
+    )
     await session.delete(movie)
     try:
         await session.commit()
@@ -109,7 +153,7 @@ async def delete_movie(
         await session.rollback()
         raise HTTPException(
             status_code=409,
-            detail="Movie is referenced by other records and cannot be deleted",
+            detail="Movie is referenced by existing records and cannot be deleted",
         ) from exc
     await _invalidate_catalog_cache()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
