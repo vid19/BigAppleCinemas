@@ -45,6 +45,18 @@ services:
       - postgres
       - redis
 
+  beat:
+    build:
+      context: ./apps/backend
+    command: celery -A app.workers.celery_app beat --loglevel=info
+    env_file:
+      - ./apps/backend/.env.example
+    volumes:
+      - ./apps/backend:/app
+    depends_on:
+      - postgres
+      - redis
+
   frontend:
     build:
       context: ./apps/frontend

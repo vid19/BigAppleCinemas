@@ -15,7 +15,11 @@ Prevent seat oversell under concurrent reservation attempts.
 
 ## Expiration
 
-- Expiry cleanup currently runs on reservation API calls (create/get/delete):
+- Expiry cleanup runs in two ways:
+  - background periodic task (`reservation.expire_overdue` via Celery beat)
+  - reservation API calls (create/get/delete) for immediate consistency
+- Background task cadence is controlled by `RESERVATION_EXPIRY_SWEEP_SECONDS` (default 30s).
+- On expiry:
   - active reservations with `expires_at <= now` become `EXPIRED`
   - matching `showtime_seat_status` rows are released back to `AVAILABLE`
 - Expiration is idempotent: only active rows transition.
