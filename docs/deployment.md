@@ -5,6 +5,9 @@
 - `docker compose up --build`
 - API: `http://localhost:8000`
 - Frontend: `http://localhost:5173`
+- Background workers:
+  - `worker` service executes async jobs
+  - `beat` service schedules periodic jobs (reservation expiry sweep)
 
 ## Target platforms
 

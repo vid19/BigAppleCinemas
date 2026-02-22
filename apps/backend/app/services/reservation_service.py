@@ -4,6 +4,7 @@ from fastapi import HTTPException
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.session import AsyncSessionLocal
 from app.models.reservation import Reservation, ReservationSeat, ShowtimeSeatStatus
 from app.models.showtime import Showtime
 
@@ -127,3 +128,10 @@ class ReservationService:
             )
             .values(status="AVAILABLE", held_by_reservation_id=None)
         )
+
+
+async def expire_overdue_holds_job() -> int:
+    service = ReservationService()
+    async with AsyncSessionLocal() as session:
+        async with session.begin():
+            return await service.expire_overdue_holds(session)

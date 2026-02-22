@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     cors_allow_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
     cache_enabled: bool = True
     cache_ttl_seconds: int = 60
+    reservation_expiry_sweep_seconds: int = 30
 
 
 @lru_cache
