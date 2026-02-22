@@ -41,9 +41,15 @@ export function fetchMovie(movieId) {
   return request(`/movies/${movieId}`);
 }
 
-export function fetchShowtimes({ movieId, date, limit = 20, offset = 0 } = {}) {
+export function fetchShowtimes({ movieId, theaterId, date, limit = 20, offset = 0 } = {}) {
   return request("/showtimes", {
-    params: { movie_id: movieId, date, limit, offset }
+    params: { movie_id: movieId, theater_id: theaterId, date, limit, offset }
+  });
+}
+
+export function fetchTheaters({ city = "", limit = 100, offset = 0 } = {}) {
+  return request("/theaters", {
+    params: { city, limit, offset }
   });
 }
 
