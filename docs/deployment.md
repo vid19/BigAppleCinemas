@@ -7,7 +7,9 @@
 - Frontend: `http://localhost:5173`
 - Background workers:
   - `worker` service executes async jobs
-  - `beat` service schedules periodic jobs (reservation expiry sweep)
+  - `beat` service schedules periodic jobs:
+    - reservation expiry sweep
+    - daily movie-similarity rebuild for recommendations
 - Redis is also used for API rate-limiting and webhook idempotency keys.
 
 ## Target platforms

@@ -25,3 +25,7 @@ coverage/
 
 # Logs
 *.log
+
+# Celery
+celerybeat-schedule
+apps/backend/celerybeat-schedule

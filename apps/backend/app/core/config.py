@@ -31,6 +31,12 @@ class Settings(BaseSettings):
     rate_limit_checkout_window_seconds: int = 60
     rate_limit_ticket_scan: int = 60
     rate_limit_ticket_scan_window_seconds: int = 60
+    recommendation_cache_ttl_seconds: int = 180
+    recommendation_similarity_top_k: int = 16
+    recommendation_ranker_variant: str = "A"
+    recommendation_diversity_penalty: float = 0.08
+    recommendation_rebuild_hour_utc: int = 3
+    recommendation_rebuild_minute_utc: int = 30
 
 
 @lru_cache

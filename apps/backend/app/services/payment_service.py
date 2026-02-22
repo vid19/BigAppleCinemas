@@ -5,6 +5,7 @@ from fastapi import HTTPException
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.cache import delete_cache_prefix
 from app.models.order import Order, Ticket
 from app.models.reservation import Reservation, ReservationSeat, ShowtimeSeatStatus
 from app.models.showtime import Seat
@@ -179,6 +180,7 @@ class PaymentService:
         )
         reservation.status = "COMPLETED"
         order.status = "PAID"
+        await delete_cache_prefix(f"recommendations:{order.user_id}:")
 
         existing_ticket_seat_ids = set(
             (

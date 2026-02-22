@@ -41,6 +41,7 @@ Services:
 - Backend API: `http://localhost:8000`
 - Health: `http://localhost:8000/health`
 - Metrics: `http://localhost:8000/metrics`
+- Celery beat runs reservation expiry and daily recommendation similarity rebuild jobs
 
 Demo admin login (local bootstrap):
 

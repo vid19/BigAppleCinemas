@@ -1,14 +1,18 @@
-from collections import defaultdict
-from datetime import UTC, datetime
+from collections import Counter, defaultdict
+from datetime import UTC, date, datetime
+from math import log1p
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user_id
+from app.core.cache import get_cache_json, set_cache_json
+from app.core.config import settings
 from app.db.session import get_db_session
 from app.models.movie import Movie
 from app.models.order import Order, Ticket
+from app.models.recommendation import MovieSimilarity
 from app.models.showtime import Auditorium, Seat, Showtime, Theater
 from app.schemas.portal import (
     MovieRecommendationItem,
@@ -33,6 +37,57 @@ def _extract_genres(metadata_json: dict | None) -> list[str]:
         if isinstance(genre, str) and genre.strip():
             normalized.append(genre.strip())
     return normalized
+
+
+def _freshness_score(
+    *,
+    now: datetime,
+    next_showtime_starts_at: datetime,
+    release_date: date | None,
+) -> float:
+    hours_until_showtime = max(
+        (next_showtime_starts_at - now).total_seconds() / 3600,
+        0.0,
+    )
+    showtime_freshness = max(0.0, 1.0 - min(hours_until_showtime / 96.0, 1.0))
+
+    release_freshness = 0.0
+    if release_date is not None:
+        age_days = (now.date() - release_date).days
+        if age_days <= 0:
+            release_freshness = 1.0
+        else:
+            release_freshness = max(0.0, 1.0 - min(age_days / 140.0, 1.0))
+
+    return (showtime_freshness * 0.65) + (release_freshness * 0.35)
+
+
+def _weights_for_variant(variant: str) -> tuple[float, float, float]:
+    if variant.upper() == "B":
+        return (0.48, 0.32, 0.20)
+    return (0.60, 0.22, 0.18)
+
+
+def _recommendation_reason(
+    *,
+    source_movie_id: int | None,
+    watched_titles: dict[int, str],
+    genres: list[str],
+    genre_weights: dict[str, float],
+    tickets_sold: int,
+) -> str:
+    if source_movie_id is not None and source_movie_id in watched_titles:
+        return f"Because you watched {watched_titles[source_movie_id]}"
+
+    if genres:
+        matching_genres = [genre for genre in genres if genre_weights.get(genre.lower(), 0.0) > 0]
+        if matching_genres:
+            return f"Because you watch {matching_genres[0]} movies"
+
+    if tickets_sold > 0:
+        return "Trending with other moviegoers"
+
+    return "Fresh pick for tonight"
 
 
 @router.get("/tickets", response_model=MyTicketListResponse)
@@ -106,11 +161,18 @@ async def list_my_recommendations(
     session: AsyncSession = Depends(get_db_session),
     user_id: int = Depends(get_current_user_id),
 ) -> MovieRecommendationResponse:
+    variant = settings.recommendation_ranker_variant.upper()
+    cache_key = f"recommendations:{user_id}:{variant}:{limit}"
+    cached_payload = await get_cache_json(cache_key)
+    if cached_payload is not None:
+        return MovieRecommendationResponse.model_validate(cached_payload)
+
     now = datetime.now(tz=UTC)
 
     watch_history_stmt = (
         select(
             Movie.id.label("movie_id"),
+            Movie.title.label("movie_title"),
             Movie.rating.label("rating"),
             Movie.metadata_json.label("metadata_json"),
             func.count(Ticket.id).label("watch_count"),
@@ -127,6 +189,15 @@ async def list_my_recommendations(
     watch_history_rows = (await session.execute(watch_history_stmt)).mappings().all()
 
     watched_movie_ids = {int(row["movie_id"]) for row in watch_history_rows}
+    watched_titles = {
+        int(row["movie_id"]): str(row["movie_title"])
+        for row in watch_history_rows
+        if row["movie_title"]
+    }
+    watch_count_by_movie = {
+        int(row["movie_id"]): float(row["watch_count"] or 1)
+        for row in watch_history_rows
+    }
     genre_weights: defaultdict[str, float] = defaultdict(float)
     rating_weights: defaultdict[str, float] = defaultdict(float)
     for row in watch_history_rows:
@@ -136,6 +207,27 @@ async def list_my_recommendations(
             rating_weights[rating] += weight
         for genre in _extract_genres(row["metadata_json"]):
             genre_weights[genre.lower()] += weight
+
+    similarity_score_by_movie: defaultdict[int, float] = defaultdict(float)
+    top_source_by_movie: dict[int, tuple[float, int]] = {}
+    if watched_movie_ids:
+        similarity_stmt = select(
+            MovieSimilarity.movie_id.label("source_movie_id"),
+            MovieSimilarity.similar_movie_id.label("candidate_movie_id"),
+            MovieSimilarity.score.label("score"),
+        ).where(MovieSimilarity.movie_id.in_(watched_movie_ids))
+        similarity_rows = (await session.execute(similarity_stmt)).mappings().all()
+        for row in similarity_rows:
+            source_movie_id = int(row["source_movie_id"])
+            candidate_movie_id = int(row["candidate_movie_id"])
+            watch_weight = watch_count_by_movie.get(source_movie_id, 1.0)
+            contribution = float(row["score"] or 0.0) * (1.0 + log1p(watch_weight))
+            if contribution <= 0:
+                continue
+            similarity_score_by_movie[candidate_movie_id] += contribution
+            top_source = top_source_by_movie.get(candidate_movie_id)
+            if top_source is None or contribution > top_source[0]:
+                top_source_by_movie[candidate_movie_id] = (contribution, source_movie_id)
 
     upcoming_showtimes_subquery = (
         select(
@@ -184,50 +276,107 @@ async def list_my_recommendations(
         recommendations_stmt = recommendations_stmt.where(~Movie.id.in_(watched_movie_ids))
 
     recommendation_rows = (await session.execute(recommendations_stmt)).mappings().all()
-
-    ranked_items = []
+    max_similarity = max(similarity_score_by_movie.values(), default=0.0)
+    max_popularity = max(
+        (log1p(int(row["tickets_sold"] or 0)) for row in recommendation_rows),
+        default=0.0,
+    )
+    personalized_weight, popularity_weight, freshness_weight = _weights_for_variant(variant)
+    candidate_rows = []
     for row in recommendation_rows:
+        movie_id = int(row["movie_id"])
         genres = _extract_genres(row["metadata_json"])
-        genre_score = sum(genre_weights.get(genre.lower(), 0.0) for genre in genres)
-        rating_score = rating_weights.get(str(row["rating"] or "").strip(), 0.0)
+        primary_genre = genres[0].lower() if genres else None
         tickets_sold = int(row["tickets_sold"] or 0)
-        trend_score = min(tickets_sold, 100) / 10
-
-        total_score = round((genre_score * 2.2) + (rating_score * 1.3) + trend_score, 3)
-
-        if genre_score > 0 and genres:
-            matching_genres = [
-                genre for genre in genres if genre_weights.get(genre.lower(), 0.0) > 0
-            ]
-            if matching_genres:
-                reason = f"Because you watch {matching_genres[0]} movies"
-            else:
-                reason = "Matched to your watch history"
-        elif rating_score > 0:
-            reason = f"Similar rating to your watched movies ({row['rating']})"
-        elif tickets_sold > 0:
-            reason = "Trending with other moviegoers"
-        else:
-            reason = "Upcoming pick"
-
-        ranked_items.append(
-            MovieRecommendationItem(
-                movie_id=row["movie_id"],
-                title=row["title"],
-                description=row["description"],
-                runtime_minutes=row["runtime_minutes"],
-                rating=row["rating"],
-                release_date=row["release_date"],
-                poster_url=row["poster_url"],
-                next_showtime_starts_at=row["next_showtime_starts_at"],
-                reason=reason,
-                score=total_score,
-            )
+        similarity_raw = similarity_score_by_movie.get(movie_id, 0.0)
+        similarity_score = similarity_raw / max_similarity if max_similarity > 0 else 0.0
+        popularity_raw = log1p(tickets_sold)
+        popularity_score = popularity_raw / max_popularity if max_popularity > 0 else 0.0
+        freshness_score = _freshness_score(
+            now=now,
+            next_showtime_starts_at=row["next_showtime_starts_at"],
+            release_date=row["release_date"],
+        )
+        rating_score = rating_weights.get(str(row["rating"] or "").strip(), 0.0)
+        rating_bonus = min(rating_score / 4.0, 0.10) if rating_score > 0 else 0.0
+        base_score = (
+            (similarity_score * personalized_weight)
+            + (popularity_score * popularity_weight)
+            + (freshness_score * freshness_weight)
+            + rating_bonus
+        )
+        source_data = top_source_by_movie.get(movie_id)
+        source_movie_id = source_data[1] if source_data else None
+        candidate_rows.append(
+            {
+                "movie_id": movie_id,
+                "title": row["title"],
+                "description": row["description"],
+                "runtime_minutes": row["runtime_minutes"],
+                "rating": row["rating"],
+                "release_date": row["release_date"],
+                "poster_url": row["poster_url"],
+                "next_showtime_starts_at": row["next_showtime_starts_at"],
+                "tickets_sold": tickets_sold,
+                "genres": genres,
+                "primary_genre": primary_genre,
+                "source_movie_id": source_movie_id,
+                "base_score": base_score,
+            }
         )
 
-    ranked_items.sort(
-        key=lambda item: (-item.score, item.next_showtime_starts_at),
-    )
+    candidate_rows.sort(key=lambda row: row["base_score"], reverse=True)
+    remaining_rows = candidate_rows.copy()
+    selected_rows = []
+    selected_genre_counts: Counter[str] = Counter()
 
-    items = ranked_items[:limit]
-    return MovieRecommendationResponse(items=items, total=len(items))
+    while remaining_rows and len(selected_rows) < limit:
+        best_index = 0
+        best_adjusted_score = float("-inf")
+        for index, row in enumerate(remaining_rows):
+            genre_penalty = 0.0
+            if row["primary_genre"]:
+                genre_penalty = (
+                    selected_genre_counts[row["primary_genre"]]
+                    * settings.recommendation_diversity_penalty
+                )
+            adjusted_score = row["base_score"] - genre_penalty
+            if adjusted_score > best_adjusted_score:
+                best_adjusted_score = adjusted_score
+                best_index = index
+
+        selected = remaining_rows.pop(best_index)
+        if selected["primary_genre"]:
+            selected_genre_counts[selected["primary_genre"]] += 1
+        selected["score"] = round(max(best_adjusted_score, 0.0) * 100, 3)
+        selected_rows.append(selected)
+
+    items = [
+        MovieRecommendationItem(
+            movie_id=row["movie_id"],
+            title=row["title"],
+            description=row["description"],
+            runtime_minutes=row["runtime_minutes"],
+            rating=row["rating"],
+            release_date=row["release_date"],
+            poster_url=row["poster_url"],
+            next_showtime_starts_at=row["next_showtime_starts_at"],
+            reason=_recommendation_reason(
+                source_movie_id=row["source_movie_id"],
+                watched_titles=watched_titles,
+                genres=row["genres"],
+                genre_weights=genre_weights,
+                tickets_sold=row["tickets_sold"],
+            ),
+            score=row["score"],
+        )
+        for row in selected_rows
+    ]
+
+    response = MovieRecommendationResponse(items=items, total=len(items))
+    await set_cache_json(
+        cache_key,
+        response.model_dump(mode="json"),
+        ttl_seconds=settings.recommendation_cache_ttl_seconds,
+    )
+    return response
