@@ -1,13 +1,15 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
+  createAuditorium,
   createMovie,
   createShowtime,
   createTheater,
   deleteMovie,
   deleteShowtime,
   deleteTheater,
+  fetchAdminAuditoriums,
   fetchAdminSalesReport,
   fetchMovies,
   fetchShowtimes,
@@ -32,15 +34,35 @@ function nowLocalInput(hoursFromNow) {
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
+function todayLocalDate() {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export function AdminDashboardPage() {
   const queryClient = useQueryClient();
-  const [feedback, setFeedback] = useState("");
+  const [toast, setToast] = useState(null);
+
+  const showSuccessToast = (message) => {
+    setToast({ type: "success", message });
+  };
+
+  const showErrorToast = (error) => {
+    setToast({
+      type: "error",
+      message: error?.message || "Request failed. Please try again."
+    });
+  };
 
   const [movieForm, setMovieForm] = useState({
     title: "",
     description: "",
     runtime_minutes: 110,
     rating: "PG-13",
+    release_date: todayLocalDate(),
     poster_url: ""
   });
   const [theaterForm, setTheaterForm] = useState({
@@ -51,16 +73,21 @@ export function AdminDashboardPage() {
   });
   const [showtimeForm, setShowtimeForm] = useState({
     movie_id: "",
-    auditorium_id: 1,
+    auditorium_id: "",
     starts_at: nowLocalInput(4),
     ends_at: nowLocalInput(6),
     status: "SCHEDULED"
+  });
+  const [auditoriumForm, setAuditoriumForm] = useState({
+    theater_id: "",
+    name: ""
   });
   const [editingMovieId, setEditingMovieId] = useState(null);
   const [movieEditForm, setMovieEditForm] = useState({
     title: "",
     runtime_minutes: 120,
     rating: "PG-13",
+    release_date: todayLocalDate(),
     poster_url: ""
   });
   const [editingTheaterId, setEditingTheaterId] = useState(null);
@@ -87,6 +114,10 @@ export function AdminDashboardPage() {
     queryKey: ["admin-theaters"],
     queryFn: () => fetchTheaters({ limit: 100, offset: 0 })
   });
+  const auditoriumsQuery = useQuery({
+    queryKey: ["admin-auditoriums"],
+    queryFn: () => fetchAdminAuditoriums({ limit: 200, offset: 0 })
+  });
   const salesReportQuery = useQuery({
     queryKey: ["admin-sales-report"],
     queryFn: () => fetchAdminSalesReport({ limit: 8 })
@@ -95,96 +126,124 @@ export function AdminDashboardPage() {
   const refreshQueries = () => {
     queryClient.invalidateQueries({ queryKey: ["admin-movies"] });
     queryClient.invalidateQueries({ queryKey: ["movies"] });
+    queryClient.invalidateQueries({ queryKey: ["home-featured-movies"] });
     queryClient.invalidateQueries({ queryKey: ["admin-theaters"] });
     queryClient.invalidateQueries({ queryKey: ["theaters"] });
+    queryClient.invalidateQueries({ queryKey: ["admin-auditoriums"] });
     queryClient.invalidateQueries({ queryKey: ["admin-showtimes"] });
     queryClient.invalidateQueries({ queryKey: ["showtimes"] });
     queryClient.invalidateQueries({ queryKey: ["admin-sales-report"] });
   };
 
+  useEffect(() => {
+    if (!toast) {
+      return undefined;
+    }
+    const timeout = window.setTimeout(() => {
+      setToast(null);
+    }, 5000);
+    return () => window.clearTimeout(timeout);
+  }, [toast]);
+
   const createMovieMutation = useMutation({
     mutationFn: createMovie,
     onSuccess: () => {
-      setFeedback("Movie created.");
-      setMovieForm((prev) => ({ ...prev, title: "", description: "", poster_url: "" }));
+      showSuccessToast("Movie created.");
+      setMovieForm((prev) => ({
+        ...prev,
+        title: "",
+        description: "",
+        release_date: todayLocalDate(),
+        poster_url: ""
+      }));
       refreshQueries();
     },
-    onError: (error) => setFeedback(error.message)
+    onError: showErrorToast
   });
 
   const deleteMovieMutation = useMutation({
     mutationFn: deleteMovie,
     onSuccess: () => {
-      setFeedback("Movie deleted.");
+      showSuccessToast("Movie deleted.");
       refreshQueries();
     },
-    onError: (error) => setFeedback(error.message)
+    onError: showErrorToast
   });
   const updateMovieMutation = useMutation({
     mutationFn: ({ movieId, payload }) => updateMovie(movieId, payload),
     onSuccess: () => {
-      setFeedback("Movie updated.");
+      showSuccessToast("Movie updated.");
       setEditingMovieId(null);
       refreshQueries();
     },
-    onError: (error) => setFeedback(error.message)
+    onError: showErrorToast
   });
 
   const createTheaterMutation = useMutation({
     mutationFn: createTheater,
     onSuccess: () => {
-      setFeedback("Theater created.");
+      showSuccessToast("Theater created.");
       setTheaterForm((prev) => ({ ...prev, name: "", address: "" }));
       refreshQueries();
     },
-    onError: (error) => setFeedback(error.message)
+    onError: showErrorToast
   });
   const deleteTheaterMutation = useMutation({
     mutationFn: deleteTheater,
     onSuccess: () => {
-      setFeedback("Theater deleted.");
+      showSuccessToast("Theater deleted.");
       refreshQueries();
     },
-    onError: (error) => setFeedback(error.message)
+    onError: showErrorToast
+  });
+  const createAuditoriumMutation = useMutation({
+    mutationFn: createAuditorium,
+    onSuccess: () => {
+      showSuccessToast("Auditorium created.");
+      setAuditoriumForm((prev) => ({ ...prev, name: "" }));
+      refreshQueries();
+    },
+    onError: showErrorToast
   });
   const updateTheaterMutation = useMutation({
     mutationFn: ({ theaterId, payload }) => updateTheater(theaterId, payload),
     onSuccess: () => {
-      setFeedback("Theater updated.");
+      showSuccessToast("Theater updated.");
       setEditingTheaterId(null);
       refreshQueries();
     },
-    onError: (error) => setFeedback(error.message)
+    onError: showErrorToast
   });
 
   const createShowtimeMutation = useMutation({
     mutationFn: createShowtime,
     onSuccess: () => {
-      setFeedback("Showtime created.");
+      showSuccessToast("Showtime created.");
       refreshQueries();
     },
-    onError: (error) => setFeedback(error.message)
+    onError: showErrorToast
   });
   const deleteShowtimeMutation = useMutation({
     mutationFn: deleteShowtime,
     onSuccess: () => {
-      setFeedback("Showtime deleted.");
+      showSuccessToast("Showtime deleted.");
       refreshQueries();
     },
-    onError: (error) => setFeedback(error.message)
+    onError: showErrorToast
   });
   const updateShowtimeMutation = useMutation({
     mutationFn: ({ showtimeId, payload }) => updateShowtime(showtimeId, payload),
     onSuccess: () => {
-      setFeedback("Showtime updated.");
+      showSuccessToast("Showtime updated.");
       setEditingShowtimeId(null);
       refreshQueries();
     },
-    onError: (error) => setFeedback(error.message)
+    onError: showErrorToast
   });
 
   const movieItems = moviesQuery.data?.items ?? [];
   const theaterItems = theatersQuery.data?.items ?? [];
+  const auditoriumItems = auditoriumsQuery.data?.items ?? [];
   const showtimeItems = showtimesQuery.data?.items ?? [];
   const movieOptions = useMemo(
     () => movieItems.map((movie) => ({ id: movie.id, title: movie.title })),
@@ -192,14 +251,51 @@ export function AdminDashboardPage() {
   );
   const salesSnapshot = salesReportQuery.data;
 
+  useEffect(() => {
+    if (theaterItems.length === 0) {
+      return;
+    }
+    setAuditoriumForm((current) => {
+      if (current.theater_id) {
+        return current;
+      }
+      return { ...current, theater_id: String(theaterItems[0].id) };
+    });
+  }, [theaterItems]);
+
+  useEffect(() => {
+    if (auditoriumItems.length === 0) {
+      setShowtimeForm((current) => ({ ...current, auditorium_id: "" }));
+      return;
+    }
+    setShowtimeForm((current) => {
+      const selectedAuditoriumId = Number(current.auditorium_id);
+      const hasSelection = auditoriumItems.some((item) => item.id === selectedAuditoriumId);
+      if (hasSelection) {
+        return current;
+      }
+      return { ...current, auditorium_id: String(auditoriumItems[0].id) };
+    });
+  }, [auditoriumItems]);
+
   return (
     <section className="page page-shell admin-dashboard-page">
+      {toast && (
+        <div
+          aria-live="polite"
+          className={`admin-toast admin-toast-${toast.type}`}
+          role={toast.type === "error" ? "alert" : "status"}
+        >
+          <span>{toast.message}</span>
+          <button aria-label="Dismiss notification" onClick={() => setToast(null)} type="button">
+            Dismiss
+          </button>
+        </div>
+      )}
       <div className="page-header page-header-modern">
         <h2>Admin Dashboard</h2>
         <p>Manage catalog entities for demo environments.</p>
       </div>
-
-      {feedback && <p className="status">{feedback}</p>}
 
       <article className="admin-card admin-sales-card">
         <h3>Sales snapshot</h3>
@@ -276,6 +372,7 @@ export function AdminDashboardPage() {
               event.preventDefault();
               createMovieMutation.mutate({
                 ...movieForm,
+                release_date: movieForm.release_date || null,
                 poster_url: movieForm.poster_url.trim() || null
               });
             }}
@@ -311,6 +408,13 @@ export function AdminDashboardPage() {
                 onChange={(event) => setMovieForm((prev) => ({ ...prev, rating: event.target.value }))}
               />
             </div>
+            <input
+              type="date"
+              value={movieForm.release_date}
+              onChange={(event) =>
+                setMovieForm((prev) => ({ ...prev, release_date: event.target.value }))
+              }
+            />
             <input
               placeholder="Poster URL (optional)"
               value={movieForm.poster_url}
@@ -373,6 +477,51 @@ export function AdminDashboardPage() {
         </article>
 
         <article className="admin-card admin-form-card">
+          <h3>Create auditorium</h3>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              createAuditoriumMutation.mutate({
+                theater_id: Number(auditoriumForm.theater_id),
+                name: auditoriumForm.name
+              });
+            }}
+          >
+            <select
+              required
+              value={auditoriumForm.theater_id}
+              onChange={(event) =>
+                setAuditoriumForm((prev) => ({ ...prev, theater_id: event.target.value }))
+              }
+            >
+              <option value="">Select theater</option>
+              {theaterItems.map((theater) => (
+                <option key={theater.id} value={theater.id}>
+                  {theater.name}
+                </option>
+              ))}
+            </select>
+            <input
+              required
+              placeholder="Auditorium name"
+              value={auditoriumForm.name}
+              onChange={(event) =>
+                setAuditoriumForm((prev) => ({ ...prev, name: event.target.value }))
+              }
+            />
+            <button
+              type="submit"
+              disabled={createAuditoriumMutation.isPending || theaterItems.length === 0}
+            >
+              {createAuditoriumMutation.isPending ? "Creating..." : "Create auditorium"}
+            </button>
+            {theaterItems.length === 0 && (
+              <p className="status">Create a theater first to add an auditorium.</p>
+            )}
+          </form>
+        </article>
+
+        <article className="admin-card admin-form-card">
           <h3>Create showtime</h3>
           <form
             onSubmit={(event) => {
@@ -401,17 +550,23 @@ export function AdminDashboardPage() {
               ))}
             </select>
             <div className="inline-fields">
-              <input
-                type="number"
-                min={1}
+              <select
+                required
                 value={showtimeForm.auditorium_id}
                 onChange={(event) =>
                   setShowtimeForm((prev) => ({
                     ...prev,
-                    auditorium_id: Number(event.target.value)
+                    auditorium_id: event.target.value
                   }))
                 }
-              />
+              >
+                <option value="">Select auditorium</option>
+                {auditoriumItems.map((auditorium) => (
+                  <option key={auditorium.id} value={auditorium.id}>
+                    {auditorium.theater_name} - {auditorium.name}
+                  </option>
+                ))}
+              </select>
               <input
                 value={showtimeForm.status}
                 onChange={(event) =>
@@ -433,9 +588,15 @@ export function AdminDashboardPage() {
                 setShowtimeForm((prev) => ({ ...prev, ends_at: event.target.value }))
               }
             />
-            <button type="submit" disabled={createShowtimeMutation.isPending}>
+            <button
+              type="submit"
+              disabled={createShowtimeMutation.isPending || auditoriumItems.length === 0}
+            >
               {createShowtimeMutation.isPending ? "Creating..." : "Create showtime"}
             </button>
+            {auditoriumItems.length === 0 && (
+              <p className="status">Create an auditorium first to schedule showtimes.</p>
+            )}
           </form>
         </article>
       </div>
@@ -462,6 +623,7 @@ export function AdminDashboardPage() {
                             title: movie.title,
                             runtime_minutes: movie.runtime_minutes,
                             rating: movie.rating,
+                            release_date: movie.release_date || todayLocalDate(),
                             poster_url: movie.poster_url || ""
                           });
                         }}
@@ -488,6 +650,7 @@ export function AdminDashboardPage() {
                             title: movieEditForm.title,
                             runtime_minutes: Number(movieEditForm.runtime_minutes),
                             rating: movieEditForm.rating,
+                            release_date: movieEditForm.release_date || null,
                             poster_url: movieEditForm.poster_url.trim() || null
                           }
                         });
@@ -514,6 +677,16 @@ export function AdminDashboardPage() {
                         value={movieEditForm.rating}
                         onChange={(event) =>
                           setMovieEditForm((prev) => ({ ...prev, rating: event.target.value }))
+                        }
+                      />
+                      <input
+                        type="date"
+                        value={movieEditForm.release_date}
+                        onChange={(event) =>
+                          setMovieEditForm((prev) => ({
+                            ...prev,
+                            release_date: event.target.value
+                          }))
                         }
                       />
                       <input

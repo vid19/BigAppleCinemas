@@ -79,6 +79,12 @@ Base URL: `http://localhost:8000/api`
 - `DELETE /admin/theaters/{theater_id}`
   - Requires admin bearer token
 
+### Auditoriums
+
+- `GET /admin/auditoriums`
+- `POST /admin/auditoriums`
+  - Requires admin bearer token
+
 ### Showtimes
 
 - `POST /admin/showtimes`
