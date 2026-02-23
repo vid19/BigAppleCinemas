@@ -61,6 +61,17 @@ def _create_paid_ticket(
 def test_ticket_scan_valid_then_already_used(client: TestClient) -> None:
     ticket = _create_paid_ticket(client)
     qr_token = str(ticket["qr_token"])
+    showtime_id = int(ticket["showtime_id"])
+    now = datetime.now(tz=UTC).replace(microsecond=0)
+
+    patch_response = client.patch(
+        f"/api/admin/showtimes/{showtime_id}",
+        json={
+            "starts_at": (now + timedelta(minutes=10)).isoformat(),
+            "ends_at": (now + timedelta(hours=2)).isoformat(),
+        },
+    )
+    assert patch_response.status_code == 200
 
     first_scan = client.post(
         "/api/tickets/scan",
@@ -114,6 +125,31 @@ def test_ticket_scan_rejects_expired_showtime(client: TestClient) -> None:
     assert "expired" in scan_response.json()["message"].lower()
 
 
+def test_ticket_scan_rejects_early_entry_window(client: TestClient) -> None:
+    ticket = _create_paid_ticket(client)
+    qr_token = str(ticket["qr_token"])
+    showtime_id = int(ticket["showtime_id"])
+    now = datetime.now(tz=UTC).replace(microsecond=0)
+
+    patch_response = client.patch(
+        f"/api/admin/showtimes/{showtime_id}",
+        json={
+            "starts_at": (now + timedelta(hours=3)).isoformat(),
+            "ends_at": (now + timedelta(hours=5)).isoformat(),
+        },
+    )
+    assert patch_response.status_code == 200
+
+    scan_response = client.post(
+        "/api/tickets/scan",
+        headers={"x-staff-token": "local-staff"},
+        json={"qr_token": qr_token},
+    )
+    assert scan_response.status_code == 200
+    assert scan_response.json()["result"] == "INVALID"
+    assert "entry window" in scan_response.json()["message"].lower()
+
+
 def test_me_endpoints_return_orders_and_tickets(client: TestClient) -> None:
     _create_paid_ticket(client)
 
@@ -124,6 +160,10 @@ def test_me_endpoints_return_orders_and_tickets(client: TestClient) -> None:
     assert orders_response.status_code == 200
     assert tickets_response.json()["total"] >= 1
     assert orders_response.json()["total"] >= 1
+    first_ticket = tickets_response.json()["items"][0]
+    assert first_ticket["lifecycle_state"] in {"UPCOMING", "ACTIVE", "EXPIRED", "USED", "VOID"}
+    assert first_ticket["entry_opens_at"]
+    assert first_ticket["active_until_at"]
 
 
 def test_me_recommendations_endpoint_returns_ranked_movies(client: TestClient) -> None:

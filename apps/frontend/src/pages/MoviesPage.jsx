@@ -28,11 +28,20 @@ export function MoviesPage() {
   const hasNext = offset + PAGE_SIZE < total;
 
   return (
-    <section className="page page-shell">
+    <section className="page page-shell movies-page-modern">
       <div className="page-header page-header-modern">
         <h2>Movies</h2>
         <p>Discover what is playing now and jump straight into seat booking.</p>
       </div>
+
+      <article className="movies-hero-band">
+        <p className="hero-kicker">Now showing</p>
+        <h3>Plan tonight with live showtimes and fast seat selection.</h3>
+        <p>
+          Search by title, open a movie, and move straight to a theater/time combination that works
+          for your schedule.
+        </p>
+      </article>
 
       <div className="search-row search-row-modern">
         <input
@@ -55,6 +64,12 @@ export function MoviesPage() {
 
       {!moviesQuery.isLoading && !moviesQuery.isError && items.length === 0 && (
         <p className="status">No movies found for this search.</p>
+      )}
+
+      {!moviesQuery.isLoading && !moviesQuery.isError && items.length > 0 && (
+        <p className="movies-count-note">
+          Showing {items.length} of {total} movie{total === 1 ? "" : "s"}.
+        </p>
       )}
 
       <div className="movie-grid">

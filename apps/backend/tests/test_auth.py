@@ -2,6 +2,8 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
+from app.core.config import settings
+
 
 def test_register_login_and_me_flow(client: TestClient) -> None:
     email = f"user-{uuid4().hex[:10]}@bigapplecinemas.local"
@@ -50,3 +52,38 @@ def test_register_login_and_me_flow(client: TestClient) -> None:
 def test_auth_me_requires_bearer_token(client: TestClient) -> None:
     response = client.get("/api/auth/me", headers={"Authorization": "Bearer invalid"})
     assert response.status_code == 401
+
+
+def test_auth_limits_active_refresh_sessions(client: TestClient) -> None:
+    original_max_sessions = settings.auth_max_active_sessions
+    settings.auth_max_active_sessions = 2
+    try:
+        email = f"sessions-{uuid4().hex[:10]}@bigapplecinemas.local"
+        password = "Password123!"
+
+        register_response = client.post(
+            "/api/auth/register",
+            json={"email": email, "password": password},
+        )
+        assert register_response.status_code == 201
+        oldest_refresh_token = register_response.json()["refresh_token"]
+
+        first_login = client.post(
+            "/api/auth/login",
+            json={"email": email, "password": password},
+        )
+        assert first_login.status_code == 200
+
+        second_login = client.post(
+            "/api/auth/login",
+            json={"email": email, "password": password},
+        )
+        assert second_login.status_code == 200
+
+        stale_refresh_attempt = client.post(
+            "/api/auth/refresh",
+            json={"refresh_token": oldest_refresh_token},
+        )
+        assert stale_refresh_attempt.status_code == 401
+    finally:
+        settings.auth_max_active_sessions = original_max_sessions

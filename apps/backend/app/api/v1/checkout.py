@@ -47,13 +47,17 @@ async def create_checkout_session(
     user_id: int = Depends(get_current_user_id),
 ) -> CheckoutSessionRead:
     increment_metric("checkout_session_attempt_total")
-    async with session.begin():
-        checkout_session = await payment_service.create_checkout_session(
-            session,
-            user_id=user_id,
-            reservation_id=payload.reservation_id,
-            provider=payload.provider,
-        )
+    try:
+        async with session.begin():
+            checkout_session = await payment_service.create_checkout_session(
+                session,
+                user_id=user_id,
+                reservation_id=payload.reservation_id,
+                provider=payload.provider,
+            )
+    except HTTPException:
+        increment_metric("checkout_session_failure_total")
+        raise
     increment_metric("checkout_session_success_total")
     return checkout_session
 
@@ -64,15 +68,21 @@ async def confirm_demo_checkout(
     session: AsyncSession = Depends(get_db_session),
     user_id: int = Depends(get_current_user_id),
 ) -> CheckoutFinalizeRead:
-    async with session.begin():
-        order = await payment_service.get_order_for_user(
-            session,
-            order_id=payload.order_id,
-            user_id=user_id,
-        )
-        finalized = await payment_service.finalize_paid_order(session, order=order)
+    try:
+        async with session.begin():
+            order = await payment_service.get_order_for_user(
+                session,
+                order_id=payload.order_id,
+                user_id=user_id,
+            )
+            finalized = await payment_service.finalize_paid_order(session, order=order)
+    except HTTPException:
+        increment_metric("checkout_finalize_failure_total")
+        raise
     if finalized.order_status == "PAID":
         increment_metric("checkout_finalize_success_total")
+    else:
+        increment_metric("checkout_finalize_failure_total")
     return finalized
 
 
@@ -174,6 +184,8 @@ async def stripe_webhook(
         finalized = await payment_service.finalize_paid_order(session, order=order)
         if finalized.order_status == "PAID":
             increment_metric("checkout_finalize_success_total")
+        else:
+            increment_metric("checkout_finalize_failure_total")
         return StripeWebhookAck(
             acknowledged=True,
             duplicate=False,

@@ -10,6 +10,10 @@ from app.api.deps import get_current_user_id
 from app.core.cache import delete_cache_prefix, get_cache_json, set_cache_json
 from app.core.config import settings
 from app.core.metrics import increment_metric
+from app.core.ticket_lifecycle import (
+    build_ticket_lifecycle_window,
+    resolve_ticket_lifecycle_state,
+)
 from app.db.session import get_db_session
 from app.models.movie import Movie
 from app.models.order import Order, Ticket
@@ -132,7 +136,26 @@ async def list_my_tickets(
         .order_by(Showtime.starts_at.desc(), Ticket.id.desc())
     )
     rows = (await session.execute(stmt)).mappings().all()
-    items = [MyTicketItem.model_validate(row) for row in rows]
+    now = datetime.now(tz=UTC)
+    items = []
+    for row in rows:
+        window = build_ticket_lifecycle_window(
+            showtime_starts_at=row["showtime_starts_at"],
+            showtime_ends_at=row["showtime_ends_at"],
+            entry_open_minutes=settings.ticket_entry_open_minutes,
+            active_grace_minutes=settings.ticket_active_grace_minutes,
+        )
+        item_payload = {
+            **row,
+            "lifecycle_state": resolve_ticket_lifecycle_state(
+                ticket_status=row["ticket_status"],
+                now=now,
+                window=window,
+            ),
+            "entry_opens_at": window.entry_opens_at,
+            "active_until_at": window.active_until_at,
+        }
+        items.append(MyTicketItem.model_validate(item_payload))
     return MyTicketListResponse(items=items, total=len(items))
 
 

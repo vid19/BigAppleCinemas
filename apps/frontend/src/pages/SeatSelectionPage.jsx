@@ -200,6 +200,9 @@ export function SeatSelectionPage() {
         <p>
           {seatData.theater_name} • {formatDateTime(seatData.starts_at)}
         </p>
+        <p className="seat-flow-note">
+          Seat availability refreshes automatically every few seconds.
+        </p>
         {activeHold && (
           <p className="seat-hold-pill">Hold expires in {holdTimerText}</p>
         )}
@@ -278,6 +281,9 @@ export function SeatSelectionPage() {
                 {checkoutMutation.isPending ? "Preparing checkout..." : "Review and pay"}
               </button>
             )}
+            <p className="seat-mode-note">
+              Checkout mode: {CHECKOUT_PROVIDER === "STRIPE_CHECKOUT" ? "Stripe" : "Demo mock"}
+            </p>
           </div>
           <p className="status">{feedback || "Select seats and start a timed hold."}</p>
         </aside>

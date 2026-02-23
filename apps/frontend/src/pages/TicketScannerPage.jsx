@@ -102,6 +102,12 @@ export function TicketScannerPage() {
       <div className="page-header page-header-modern">
         <h2>Ticket Scanner</h2>
         <p>Validate ticket tokens at entry and prevent duplicate usage.</p>
+        <div className="scanner-state-strip">
+          <span className={`scanner-live-pill ${cameraStatus === "active" ? "active" : ""}`}>
+            {cameraStatus === "active" ? "Camera live" : "Camera idle"}
+          </span>
+          <span className="scanner-live-pill neutral">Manual token scan supported</span>
+        </div>
       </div>
 
       <article className="admin-card scanner-card scanner-layout-card">
@@ -113,6 +119,9 @@ export function TicketScannerPage() {
             Reset staff token
           </button>
         </div>
+        <p className="scanner-tip">
+          Keep the QR centered in the preview. Auto scan runs roughly every 650ms.
+        </p>
         <div className="scanner-camera-row">
           <div className="scanner-camera-preview">
             {cameraStatus !== "active" && (

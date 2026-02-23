@@ -124,6 +124,7 @@ async def delete_movie(
                 status_code=409,
                 detail=(
                     "Movie cannot be deleted because tickets/orders exist for its showtimes. "
+                    f"Blocked by {linked_order_count} order(s). "
                     "Delete or cancel those orders first."
                 ),
             )
@@ -212,15 +213,49 @@ async def delete_theater(
     if theater is None:
         raise HTTPException(status_code=404, detail="Theater not found")
 
-    await session.delete(theater)
-    try:
-        await session.commit()
-    except IntegrityError as exc:
-        await session.rollback()
+    auditorium_ids = list(
+        (
+            await session.execute(select(Auditorium.id).where(Auditorium.theater_id == theater_id))
+        ).scalars()
+    )
+    showtime_ids: list[int] = []
+    if auditorium_ids:
+        showtime_ids = list(
+            (
+                await session.execute(
+                    select(Showtime.id).where(Showtime.auditorium_id.in_(auditorium_ids))
+                )
+            ).scalars()
+        )
+
+    showtime_count = len(showtime_ids)
+    reservation_count = 0
+    order_count = 0
+    if showtime_ids:
+        reservation_count = (
+            await session.execute(
+                select(func.count(Reservation.id)).where(Reservation.showtime_id.in_(showtime_ids))
+            )
+        ).scalar_one()
+        order_count = (
+            await session.execute(
+                select(func.count(Order.id)).where(Order.showtime_id.in_(showtime_ids))
+            )
+        ).scalar_one()
+
+    if auditorium_ids or showtime_count or reservation_count or order_count:
         raise HTTPException(
             status_code=409,
-            detail="Theater is referenced by other records and cannot be deleted",
-        ) from exc
+            detail=(
+                "Theater cannot be deleted while dependent records exist "
+                f"(auditoriums={len(auditorium_ids)}, showtimes={showtime_count}, "
+                f"reservations={reservation_count}, orders={order_count}). "
+                "Delete/cancel dependent records first."
+            ),
+        )
+
+    await session.delete(theater)
+    await session.commit()
     await _invalidate_catalog_cache()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

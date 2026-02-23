@@ -141,6 +141,9 @@ export function CheckoutProcessingPage() {
       <div className="checkout-grid">
         <div className="checkout-card checkout-payment-card">
           <p className="hero-kicker">Checkout</p>
+          <p className="checkout-mode-pill">
+            Mode: {provider === "MOCK_STRIPE" ? "Demo mock payment" : "Stripe checkout"}
+          </p>
           <h2>Complete payment</h2>
           <p>
             Order #{orderId} is reserved. Finish payment before your seat hold expires.
