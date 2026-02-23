@@ -1,10 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { fetchMyOrders, fetchMyTickets } from "../api/catalog";
 import { TicketQrCode } from "../components/TicketQrCode";
-
-const TICKET_ACTIVE_GRACE_MS = 20 * 60 * 1000;
 
 function formatDateTime(dateValue) {
   return new Date(dateValue).toLocaleString([], {
@@ -17,10 +15,10 @@ function formatDateTime(dateValue) {
 
 export function MyTicketsPage() {
   const [copiedTicketId, setCopiedTicketId] = useState(null);
-  const [nowMs, setNowMs] = useState(Date.now());
   const ticketsQuery = useQuery({
     queryKey: ["me-tickets"],
-    queryFn: fetchMyTickets
+    queryFn: fetchMyTickets,
+    refetchInterval: 30_000
   });
   const ordersQuery = useQuery({
     queryKey: ["me-orders"],
@@ -28,34 +26,31 @@ export function MyTicketsPage() {
   });
 
   const tickets = ticketsQuery.data?.items ?? [];
-  useEffect(() => {
-    const timerId = window.setInterval(() => {
-      setNowMs(Date.now());
-    }, 30_000);
-    return () => window.clearInterval(timerId);
-  }, []);
-
-  const classifyTicket = (ticket) => {
-    if (ticket.ticket_status !== "VALID") {
-      return "PAST";
-    }
-    const endsAtMs = ticket.showtime_ends_at
-      ? new Date(ticket.showtime_ends_at).getTime()
-      : new Date(ticket.showtime_starts_at).getTime();
-    const activeUntilMs = endsAtMs + TICKET_ACTIVE_GRACE_MS;
-    return nowMs <= activeUntilMs ? "ACTIVE" : "PAST";
+  const lifecycleLabelByState = {
+    UPCOMING: "UPCOMING",
+    ACTIVE: "ACTIVE",
+    EXPIRED: "EXPIRED",
+    USED: "USED",
+    VOID: "VOID",
+    INVALID: "INVALID"
   };
 
   const activeTickets = useMemo(
-    () => tickets.filter((ticket) => classifyTicket(ticket) === "ACTIVE"),
-    [nowMs, tickets]
+    () =>
+      tickets.filter(
+        (ticket) => ticket.lifecycle_state === "ACTIVE" || ticket.lifecycle_state === "UPCOMING"
+      ),
+    [tickets]
   );
   const pastTickets = useMemo(
-    () => tickets.filter((ticket) => classifyTicket(ticket) === "PAST"),
-    [nowMs, tickets]
+    () =>
+      tickets.filter(
+        (ticket) => !["ACTIVE", "UPCOMING"].includes(ticket.lifecycle_state)
+      ),
+    [tickets]
   );
   const orders = ordersQuery.data?.items ?? [];
-  const usedTicketsCount = tickets.filter((ticket) => ticket.ticket_status === "USED").length;
+  const usedTicketsCount = tickets.filter((ticket) => ticket.lifecycle_state === "USED").length;
 
   async function copyToken(ticketId, token) {
     try {
@@ -142,11 +137,19 @@ export function MyTicketsPage() {
                       <div className="ticket-item-content">
                         <div className="ticket-item-top">
                           <strong>{ticket.movie_title}</strong>
-                          <span className="ticket-pill">VALID</span>
+                          <span className={`ticket-pill ${ticket.lifecycle_state.toLowerCase()}`}>
+                            {lifecycleLabelByState[ticket.lifecycle_state] ?? ticket.lifecycle_state}
+                          </span>
                         </div>
                         <p className="status">
                           {ticket.theater_name} • {formatDateTime(ticket.showtime_starts_at)}
                         </p>
+                        {ticket.lifecycle_state === "UPCOMING" && (
+                          <p className="status">Entry opens {formatDateTime(ticket.entry_opens_at)}</p>
+                        )}
+                        {ticket.lifecycle_state === "ACTIVE" && (
+                          <p className="status">Valid until {formatDateTime(ticket.active_until_at)}</p>
+                        )}
                         <div className="ticket-meta-row">
                           <span>Seat {ticket.seat_code}</span>
                           <span>{ticket.seat_type}</span>
@@ -184,10 +187,14 @@ export function MyTicketsPage() {
                       <span>
                         {ticket.movie_title} • {ticket.seat_code}
                       </span>
-                      <span className="ticket-pill muted">{ticket.ticket_status}</span>
+                      <span className="ticket-pill muted">
+                        {lifecycleLabelByState[ticket.lifecycle_state] ?? ticket.ticket_status}
+                      </span>
                     </div>
                     <p className="status">
-                      Used {ticket.used_at ? formatDateTime(ticket.used_at) : "N/A"}
+                      {ticket.used_at
+                        ? `Used ${formatDateTime(ticket.used_at)}`
+                        : `Valid through ${formatDateTime(ticket.active_until_at)}`}
                     </p>
                   </li>
                 ))}

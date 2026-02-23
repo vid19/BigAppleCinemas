@@ -22,6 +22,7 @@ class MyTicketItem(BaseModel):
     order_id: int
     qr_token: str
     ticket_status: str
+    lifecycle_state: str
     seat_code: str
     seat_type: str
     movie_title: str
@@ -29,6 +30,8 @@ class MyTicketItem(BaseModel):
     showtime_id: int
     showtime_starts_at: datetime
     showtime_ends_at: datetime | None
+    entry_opens_at: datetime
+    active_until_at: datetime
     used_at: datetime | None
     created_at: datetime
 

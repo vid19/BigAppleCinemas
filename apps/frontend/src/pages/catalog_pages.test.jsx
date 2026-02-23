@@ -201,12 +201,16 @@ describe("catalog pages", () => {
                 order_id: 7,
                 qr_token: "tkt_123",
                 ticket_status: "VALID",
+                lifecycle_state: "ACTIVE",
                 seat_code: "B4",
                 seat_type: "PREMIUM",
                 movie_title: "Skyline Heist",
                 theater_name: "Big Apple Cinemas - Midtown",
                 showtime_id: 5,
                 showtime_starts_at: "2026-02-23T14:00:00Z",
+                showtime_ends_at: "2026-02-23T16:10:00Z",
+                entry_opens_at: "2026-02-23T13:00:00Z",
+                active_until_at: "2026-02-23T16:30:00Z",
                 used_at: null,
                 created_at: "2026-02-20T14:00:00Z"
               }

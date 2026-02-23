@@ -77,6 +77,7 @@ export function MovieDetailPage() {
   const movie = movieQuery.data;
   const showtimes = showtimesQuery.data?.items ?? [];
   const theaters = theatersQuery.data?.items ?? [];
+  const firstShowtime = showtimes[0];
 
   return (
     <section className="page page-shell">
@@ -97,6 +98,23 @@ export function MovieDetailPage() {
       </div>
 
       <p className="movie-description">{movie.description || "Description coming soon."}</p>
+      <article className="movie-detail-insight-card">
+        <p className="hero-kicker">Booking snapshot</p>
+        <div className="movie-detail-insight-grid">
+          <div>
+            <span>Showtimes found</span>
+            <strong>{showtimes.length}</strong>
+          </div>
+          <div>
+            <span>Theaters available</span>
+            <strong>{theaters.length}</strong>
+          </div>
+          <div>
+            <span>Next slot</span>
+            <strong>{firstShowtime ? formatDateTime(firstShowtime.starts_at) : "No slots"}</strong>
+          </div>
+        </div>
+      </article>
 
       <div className="filters-wrap filters-wrap-modern">
         <div className="filter-row">

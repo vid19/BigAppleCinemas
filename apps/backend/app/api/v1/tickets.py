@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy import select
@@ -8,6 +8,10 @@ from app.api.deps import AuthenticatedUser, require_admin_user
 from app.core.config import settings
 from app.core.metrics import increment_metric
 from app.core.rate_limit import create_rate_limiter
+from app.core.ticket_lifecycle import (
+    build_ticket_lifecycle_window,
+    resolve_ticket_lifecycle_state,
+)
 from app.db.session import get_db_session
 from app.models.order import Order, Ticket
 from app.models.showtime import Seat, Showtime
@@ -37,7 +41,13 @@ async def scan_ticket(
         now = datetime.now(tz=UTC)
         row = (
             await session.execute(
-                select(Ticket, Order.showtime_id, Seat.seat_code, Showtime.ends_at)
+                select(
+                    Ticket,
+                    Order.showtime_id,
+                    Seat.seat_code,
+                    Showtime.starts_at,
+                    Showtime.ends_at,
+                )
                 .join(Order, Order.id == Ticket.order_id)
                 .join(Seat, Seat.id == Ticket.seat_id)
                 .join(Showtime, Showtime.id == Order.showtime_id)
@@ -53,7 +63,7 @@ async def scan_ticket(
                 message="Ticket not found",
             )
 
-        ticket, showtime_id, seat_code, showtime_ends_at = row
+        ticket, showtime_id, seat_code, showtime_starts_at, showtime_ends_at = row
         if ticket.status == "USED":
             increment_metric("ticket_scan_already_used_total")
             return TicketScanResponse(
@@ -77,19 +87,39 @@ async def scan_ticket(
                 message=f"Ticket is not valid for entry ({ticket.status})",
             )
 
-        if showtime_ends_at is not None:
-            expires_at = showtime_ends_at + timedelta(minutes=settings.ticket_active_grace_minutes)
-            if now > expires_at:
-                increment_metric("ticket_scan_invalid_total")
-                return TicketScanResponse(
-                    result="INVALID",
-                    ticket_id=ticket.id,
-                    order_id=ticket.order_id,
-                    showtime_id=showtime_id,
-                    seat_code=seat_code,
-                    used_at=ticket.used_at,
-                    message="Ticket expired after showtime ended",
-                )
+        window = build_ticket_lifecycle_window(
+            showtime_starts_at=showtime_starts_at,
+            showtime_ends_at=showtime_ends_at,
+            entry_open_minutes=settings.ticket_entry_open_minutes,
+            active_grace_minutes=settings.ticket_active_grace_minutes,
+        )
+        lifecycle_state = resolve_ticket_lifecycle_state(
+            ticket_status=ticket.status,
+            now=now,
+            window=window,
+        )
+        if lifecycle_state == "UPCOMING":
+            increment_metric("ticket_scan_invalid_total")
+            return TicketScanResponse(
+                result="INVALID",
+                ticket_id=ticket.id,
+                order_id=ticket.order_id,
+                showtime_id=showtime_id,
+                seat_code=seat_code,
+                used_at=ticket.used_at,
+                message="Ticket entry window has not opened yet",
+            )
+        if lifecycle_state == "EXPIRED":
+            increment_metric("ticket_scan_invalid_total")
+            return TicketScanResponse(
+                result="INVALID",
+                ticket_id=ticket.id,
+                order_id=ticket.order_id,
+                showtime_id=showtime_id,
+                seat_code=seat_code,
+                used_at=ticket.used_at,
+                message="Ticket expired after showtime ended",
+            )
 
         ticket.status = "USED"
         ticket.used_at = now

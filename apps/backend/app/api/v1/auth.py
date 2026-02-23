@@ -1,11 +1,12 @@
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import AuthenticatedUser, get_current_user
 from app.core.config import settings
+from app.core.metrics import increment_metric
 from app.core.rate_limit import create_rate_limiter
 from app.core.security import (
     create_access_token,
@@ -73,11 +74,56 @@ async def _issue_auth_tokens(
         )
     )
     await session.flush()
+    await _prune_refresh_sessions(
+        session=session,
+        user_id=user.id,
+        now=datetime.now(tz=UTC),
+    )
     return _to_auth_token_response(
         user=user,
         access_token=access_token,
         refresh_token=refresh_token,
     )
+
+
+async def _prune_refresh_sessions(
+    *,
+    session: AsyncSession,
+    user_id: int,
+    now: datetime,
+) -> None:
+    await session.execute(
+        delete(RefreshTokenSession).where(
+            RefreshTokenSession.user_id == user_id,
+            (RefreshTokenSession.revoked_at.is_not(None))
+            | (RefreshTokenSession.expires_at <= now),
+        )
+    )
+
+    max_active_sessions = max(settings.auth_max_active_sessions, 1)
+    active_session_ids = list(
+        (
+            await session.execute(
+                select(RefreshTokenSession.id)
+                .where(
+                    RefreshTokenSession.user_id == user_id,
+                    RefreshTokenSession.revoked_at.is_(None),
+                    RefreshTokenSession.expires_at > now,
+                )
+                .order_by(
+                    RefreshTokenSession.created_at.desc(),
+                    RefreshTokenSession.id.desc(),
+                )
+            )
+        ).scalars()
+    )
+    overflow_ids = active_session_ids[max_active_sessions:]
+    if overflow_ids:
+        await session.execute(
+            update(RefreshTokenSession)
+            .where(RefreshTokenSession.id.in_(overflow_ids))
+            .values(revoked_at=now)
+        )
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
@@ -123,6 +169,7 @@ async def login(
             password_valid = False
 
     if user is None or not password_valid:
+        increment_metric("auth_login_failure_total")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
     user_for_update = (
@@ -130,6 +177,7 @@ async def login(
     ).scalar_one()
     token_response = await _issue_auth_tokens(session=session, user=user_for_update)
     await session.commit()
+    increment_metric("auth_login_success_total")
     return token_response
 
 
@@ -140,6 +188,7 @@ async def refresh_tokens(
 ) -> AuthTokenResponse:
     token_payload = decode_refresh_token(payload.refresh_token)
     if token_payload is None:
+        increment_metric("auth_refresh_failure_total")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid refresh token",
@@ -149,6 +198,7 @@ async def refresh_tokens(
     try:
         user_id = int(raw_subject)
     except (TypeError, ValueError) as exc:
+        increment_metric("auth_refresh_failure_total")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid refresh token",
@@ -157,6 +207,7 @@ async def refresh_tokens(
     now = datetime.now(tz=UTC)
     token_hash = hash_refresh_token(payload.refresh_token)
     async with session.begin():
+        await _prune_refresh_sessions(session=session, user_id=user_id, now=now)
         refresh_session = (
             await session.execute(
                 select(RefreshTokenSession)
@@ -168,11 +219,13 @@ async def refresh_tokens(
             )
         ).scalar_one_or_none()
         if refresh_session is None:
+            increment_metric("auth_refresh_failure_total")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Refresh token not recognized",
             )
         if refresh_session.revoked_at is not None or refresh_session.expires_at <= now:
+            increment_metric("auth_refresh_failure_total")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Refresh token expired or revoked",
@@ -182,11 +235,13 @@ async def refresh_tokens(
             await session.execute(select(User).where(User.id == user_id).with_for_update())
         ).scalar_one_or_none()
         if user is None:
+            increment_metric("auth_refresh_failure_total")
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
         refresh_session.revoked_at = now
         await session.flush()
         token_response = await _issue_auth_tokens(session=session, user=user)
+    increment_metric("auth_refresh_success_total")
     return token_response
 
 

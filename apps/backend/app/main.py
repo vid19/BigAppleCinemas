@@ -43,7 +43,21 @@ async def add_request_context(request: Request, call_next):  # type: ignore[no-u
     request.state.request_id = request_id
     started_at = perf_counter()
     increment_metric("app_requests_total")
-    response = await call_next(request)
+    try:
+        response = await call_next(request)
+    except Exception:
+        duration_ms = (perf_counter() - started_at) * 1000
+        request_logger.exception(
+            "request_failed",
+            extra={
+                "request_id": request_id,
+                "method": request.method,
+                "path": request.url.path,
+                "duration_ms": round(duration_ms, 2),
+            },
+        )
+        raise
+
     response.headers["X-Request-ID"] = request_id
     duration_ms = (perf_counter() - started_at) * 1000
     request_logger.info(
