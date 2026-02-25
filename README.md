@@ -12,7 +12,7 @@ Production-grade movie ticketing platform built with FastAPI + React.
 - Personalized recommendations with feedback (save/hide), event tracking (impression/click), and admin KPI snapshot.
 - Structured request IDs, rate limits, and Prometheus-style metrics endpoint.
 
-## Recruiter Demo Walkthrough
+## Demo Walkthrough
 
 `Book -> Hold -> Checkout -> Ticket -> Scan`
 
@@ -82,9 +82,9 @@ Demo admin login (local bootstrap):
 - Deploy: `.github/workflows/deploy.yml` includes staging/prod jobs with migration-first order and environment-gated secrets.
 - Secrets and runtime env checklist: `docs/environment.md`.
 
-## Recruiter Packaging Checklist
+## Packaging Checklist
 
-- Capture screenshots/GIFs for:
+- Capture screenshots/GIFs for (to be done):
   - Home hero + recommendations
   - Seat hold countdown + checkout processing
   - My Tickets QR + scanner success/already-used/expired states
